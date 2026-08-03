@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedIn Metrics Dashboard — SM &amp; TT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#F3F4EF;
+    --white:#FFFFFF;
+    --ink:#12151A;
+    --muted:#6B7280;
+    --muted-2:#8993A1;
+    --border:#E4E2D8;
+    --border-2:#EDEBE1;
+    --green:#1A8A54;
+    --red:#C0392B;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(22,29,46,0.05), 0 2px 10px rgba(22,29,46,0.04);
+
+    --navy-1:#1B2233;
+    --navy-2:#161D2E;
+
+    --sm-blue:#115FCE;
+    --sm-blue-dark:#0C4494;
+    --sm-blue-light:#EAF2FE;
+
+    --tt-orange:#FF5500;
+    --tt-orange-dark:#D4480A;
+    --tt-orange-light:#FFEEE4;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:26px 24px 64px;}
+
+  /* ---------- Header ---------- */
+  .eyebrow{font-size:11px;letter-spacing:.08em;font-weight:700;color:var(--muted-2);text-transform:uppercase;margin-bottom:6px;}
+  .header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .header-row h1{font-size:30px;margin:0;letter-spacing:-0.01em;color:var(--ink);font-weight:800;font-family:"Poppins","-apple-system",sans-serif;}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .control{display:flex;flex-direction:column;gap:3px;}
+  .control label{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-2);font-weight:700;}
+  select{
+    appearance:none;-webkit-appearance:none;
+    background:var(--white) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0l5 6 5-6z" fill="%23414A5A"/></svg>') no-repeat right 12px center;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:9px 34px 9px 12px;
+    font-size:13px;font-weight:600;color:var(--ink);
+    min-width:180px;
+    cursor:pointer;
+  }
+  select:focus{outline:2px solid var(--sm-blue);outline-offset:1px;}
+  hr.divider{border:none;border-top:1px solid var(--border);margin:18px 0 16px;}
+  .pt-note{font-size:11.5px;color:var(--muted);margin:0 0 20px;}
+  .pt-note b{color:var(--ink);}
+
+  /* ---------- VS banner ---------- */
+  .vs-banner{display:flex;align-items:stretch;justify-content:center;gap:0;margin-bottom:20px;}
+  .vs-side{flex:0 0 auto;background:var(--white);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;padding:14px 22px;transition:all .18s ease;}
+  .vs-side.sm{border-left:4px solid var(--sm-blue);}
+  .vs-side.tt{border-left:4px solid var(--tt-orange);}
+  .vs-side img{height:19px;display:block;transition:opacity .18s ease, filter .18s ease;}
+  .vs-side.inactive{border-left-color:var(--border-2);background:#FAFAF8;}
+  .vs-side.inactive img{opacity:.35;filter:grayscale(1);}
+  .vs-mid{width:44px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:var(--white);border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-size:11px;font-weight:800;color:var(--muted-2);}
+
+  /* ---------- Sections ---------- */
+  .section{margin-bottom:28px;}
+  .section-head{margin-bottom:12px;}
+  .section-title{font-size:13px;font-weight:800;color:var(--ink);letter-spacing:.02em;text-transform:uppercase;margin:0 0 3px;}
+  .section-title .num{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:19px;height:19px;border-radius:50%;background:var(--navy-2);color:#fff;
+    font-size:10px;font-weight:800;margin-right:8px;
+  }
+  .section-sub{font-size:12.5px;color:var(--muted);margin:0;}
+
+  /* ---------- 1. Summary (dark banner) ---------- */
+  .summary-banner{
+    background:linear-gradient(180deg,var(--navy-1),var(--navy-2));
+    border-radius:var(--radius);
+    color:#fff;
+    padding:20px 22px 18px;
+    font-size:13.5px;
+  }
+  .summary-month{
+    font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    color:rgba(255,255,255,0.5);margin-bottom:12px;
+  }
+  .summary-list{list-style:none;margin:0;padding:0;}
+  .summary-list li{
+    position:relative;padding:0 0 0 20px;margin-bottom:12px;line-height:1.65;
+    color:rgba(255,255,255,0.94);
+  }
+  .summary-list li:last-child{margin-bottom:0;}
+  .summary-list li::before{
+    content:'';position:absolute;left:0;top:8px;width:7px;height:7px;border-radius:50%;
+  }
+  .summary-list li.sm::before{background:var(--sm-blue);box-shadow:0 0 0 3px rgba(17,95,206,0.25);}
+  .summary-list li.tt::before{background:var(--tt-orange);box-shadow:0 0 0 3px rgba(255,85,0,0.22);}
+  .summary-list b{font-weight:800;}
+  .summary-list .metric-sep{color:rgba(255,255,255,0.35);margin:0 8px;}
+  .up{color:#5FD895;font-weight:700;}
+  .down{color:#FF8A80;font-weight:700;}
+  .flat{color:#C9CEDA;font-weight:700;}
+  .compare-line{
+    color:rgba(255,255,255,0.68);font-size:12.5px;margin-top:14px;padding-top:14px;
+    border-top:1px solid rgba(255,255,255,0.1);font-style:italic;
+  }
+
+  /* ---------- 2. Overall cards + bars ---------- */
+  .card-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+  .card-grid.single{grid-template-columns:1fr;max-width:560px;margin:0 auto 18px;}
+  .brand-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  .brand-card .head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border-2);}
+  .brand-card.sm{border-top:3px solid var(--sm-blue);}
+  .brand-card.tt{border-top:3px solid var(--tt-orange);}
+  .brand-card .head img{height:18px;display:block;}
+  .badge{font-size:10px;font-weight:800;letter-spacing:.04em;padding:4px 8px;border-radius:5px;text-transform:uppercase;}
+  .brand-card.sm .badge{background:var(--sm-blue-light);color:var(--sm-blue-dark);}
+  .brand-card.tt .badge{background:var(--tt-orange-light);color:var(--tt-orange-dark);}
+  .metric-block-label{font-size:10.5px;font-weight:800;color:var(--muted-2);letter-spacing:.06em;text-transform:uppercase;padding:12px 18px 4px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:6px 18px 16px;}
+  .stat{padding:8px 8px 0 0;}
+  .stat .val{font-size:19px;font-weight:700;color:var(--ink);line-height:1.15;font-family:"Poppins","-apple-system",sans-serif;}
+  .stat .lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-top:2px;}
+  .stat .delta{font-size:11px;margin-top:4px;font-weight:700;}
+  .stat .delta.up{color:var(--green);}
+  .stat .delta.down{color:var(--red);}
+  .stat .delta.flat{color:var(--muted);}
+
+  .subsection-label{font-size:11px;font-weight:800;color:var(--muted-2);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;}
+  .bar-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;}
+  .bar-panel{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px 8px;box-shadow:var(--shadow);}
+  .bar-panel .title{font-size:10.5px;font-weight:800;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .bar-panel canvas{max-height:140px;}
+
+  /* ---------- Tables ---------- */
+  .table-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  thead th{
+    text-align:right;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted-2);
+    font-weight:800;padding:10px 14px;border-bottom:1px solid var(--border);background:#FAF9F5;white-space:nowrap;
+  }
+  thead th:first-child{text-align:left;}
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--border-2);color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  tbody td:first-child{text-align:left;white-space:normal;}
+  tbody tr:last-child td{border-bottom:none;}
+  .brand-group-row td{padding:9px 14px;font-weight:800;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;text-align:left;}
+  .brand-group-row.sm td{background:var(--sm-blue-light);color:var(--sm-blue-dark);}
+  .brand-group-row.tt td{background:var(--tt-orange-light);color:var(--tt-orange-dark);}
+  .campaign-name{font-weight:700;color:var(--ink);display:block;}
+  .campaign-tag{font-size:11px;color:var(--muted);display:block;margin-top:1px;font-weight:400;}
+  .total-row td{font-weight:800;background:#FAF9F5;border-top:1.5px solid var(--border);}
+  .highlight-row td{background:#FFF6E8;}
+  .this-month-tag{
+    font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tt-orange-dark);
+    background:var(--tt-orange-light);padding:2px 6px;border-radius:4px;margin-left:6px;
+  }
+  .footnote{font-size:11px;color:var(--muted);margin-top:9px;line-height:1.5;}
+
+  /* ---------- Trends ---------- */
+  .trend-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px 14px;box-shadow:var(--shadow);}
+  .pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .pill-group-label{font-size:10px;font-weight:800;color:var(--muted-2);letter-spacing:.05em;text-transform:uppercase;align-self:center;margin-right:2px;}
+  .pill{
+    border:1px solid var(--border);background:var(--white);color:var(--muted);
+    font-size:12px;font-weight:700;padding:7px 13px;border-radius:20px;cursor:pointer;
+    transition:all .12s ease;
+  }
+  .pill:hover{border-color:var(--sm-blue);color:var(--sm-blue-dark);}
+  .pill.active{background:var(--navy-2);border-color:var(--navy-2);color:#fff;}
+  .trend-canvas-wrap{height:300px;position:relative;}
+  .trend-legend{display:flex;gap:16px;margin-bottom:8px;font-size:12px;color:var(--muted);}
+  .legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+
+  /* ---------- Footer ---------- */
+  .page-footer{text-align:center;font-size:11.5px;color:var(--muted-2);margin-top:38px;padding-top:18px;border-top:1px solid var(--border);}
+
+  @media (max-width:760px){
+    .card-grid, .bar-grid{grid-template-columns:1fr;}
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .vs-banner{flex-direction:column;}
+    .vs-mid{width:100%;padding:6px;}
+    .vs-side{justify-content:center !important;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">SM &amp; TT · LinkedIn Campaigns &amp; Page Analytics Performance</div>
+  <div class="header-row">
+    <h1>LinkedIn Metrics Dashboard</h1>
+    <div class="controls">
+      <div class="control">
+        <label for="viewSelect">View</label>
+        <select id="viewSelect">
+          <option value="comparison">Comparison (SM vs TT)</option>
+          <option value="SM">ShowMojo</option>
+          <option value="TT">Tenant Turner</option>
+        </select>
+      </div>
+      <div class="control">
+        <label for="monthSelect">Month</label>
+        <select id="monthSelect"></select>
+      </div>
+    </div>
+  </div>
+  <hr class="divider">
+  <p class="pt-note">"pt" = percentage point — the plain gap between two %s. Example: 3.2% → 5.4% is <b>+2.2 pt</b>, not +2.2%.</p>
+
+  <div class="vs-banner" id="vsBanner">
+    <div class="vs-side sm"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAAxCAYAAAA1I3faAAARfklEQVR4nO2dT3LbyJKHfwlSb/tKATAMPy8edYKmpEUvTfUFTB/AIjUXMH0CUScwNQcYUe4DWLpAi1p6IUo+gdCLHtFBMIS3HZHIWQCkQKIK/wjS7m58EY6wCKCQZKGyMrMyC0BBQcHfFsp6oWjdCkz/T+QoyzOlfzhOb9dZS9sFBQVzMisAABDNwQExmiA08xIogMXgc5DWLZRBQcF6CCmA7cNBj4EqmHvOr/u9JI2Id1+qRFsdEF4DqOYso8Xu04Hz689Wzu0WFPztWVAA262bLpjeBz6yGHwKd3KRdACK1k2LmI6RryKwmGi3sAQKCvJlrgBEc3BAwG/KMxnnTDh3zveukjSct3vA4BPnfL+TR1sFBQUeAQVw85lAjdgrGF+ZuZvKPSiV22B6g9WsAoeJdvKwAnTdrGoa6swkABbBY8x8p2muNRqN7la9T0HBj85cAWw3B48ARIprLTCumZ86qdwDl9og/JROTIAZ19CokVUBCFER5XKp7VkkVE1wR4sZl2B0x+OhFXWmYZh1EM4kMl+O7WE7i7x/R4yKeR95AuPItof9bG2/vF1W9kEI07ebVPq6blZJQ9iaZli2PTzYlBzlwP9FymurIFSJtprbh4NE7oHT2+8B6InWoEYu2gndA4fBJ86n/W5K+eYYxss2iI6jHoAwVCXCexDeG4Z5YtvDTtz54c/4nynELIhVzFwH0E/bqq6bLQC1qEUv5pJI2+7qSL4v8UYl0HJphdAk4Lft5uBevLtpxZ3u9PbuHj/ttdh92mHwBwCW7DwGnzDRjnOeffDrhnkGwsd0g38JomPdMEMzfMGGoYUAdZrrGvkK8tehHH9KKqqk0dl2c3CcxD3wj3UBdEXrpgWXWkT4NzN+Bz+1Vl360w2zS0StVdqYQUQt3TAxtodHebRXkAlhGGY9jRug62aVCG/WKNOfmrwVwIy5eyCaNxcA/XdS9yAvASqVVzWGGzVjXINxwexaROQwsyDSqiA0ALyWXUBELV1/cTkef7vIS86CdDDQQDo3oL4WQf4irEsBzPFXFhrbzYHFLp8Ak37WmV20bkXSIKCLaZukPh9bhNLb0eiPO8WlXV1/0SCtdCZzG0jTjgFcJBS5IGeIqClEpeM4IyfZ+WvJUl2Z6XTqbGmlkDXpuuxsUo61K4AAVdLoDNhytg8Hl6xRO+lgnmUa8tTtI6GVQNDeAOGACgEnEYMfADAef7swDNMBkcxqqaU1QwtyRZRKWh0JlLCum1UQ1dcsTyZ8Bdb7zmLkFARMhwChCebd2BNbt0I0bzqkbd2mSSjSdbOqCvqNRsNekjb8Ad6XH+VaUlkK8oc0LVEwkIrgXyybtABmWAz8V1xMwMsk5P9JtmafHF03q3Hr+nOYr0Hh5CVeQSYhKqJU8pacptOpk9SUjcNTeh55tvuDUheiImK/I/H7FevdlAT7Efi+v/kqfb9JBeAw+DSuuk80BwdgHJMiELcyhDaAdpJT/bX/Th63NQyzDuA4aJKWtTKMimkxow/GSWLFhFliU7kF8BuQVgtaPF67/3LA0z4zXY7HaqtHN8wugFC+wnQy/aB6kHT9RQNEoch69DVmyy8WW0Cj6WmWBJxyWWvBW0GSIsSrGuBW07YbxXMyGb0BUFuQJ9CXBJwncRFlS8sE/mrb37rxcqze98CmFADj3PP595yo00TrVhDzb6sq7fF4aBmVfznSIB7Re90w/5l2wK2Cbphd9Ro2VYnQAqGVLOFoObGJIIt1ACxAWoMIDaNiHkdlusmWSstl7StUA4y0lmxprVwunUPhNpFG77E0aADAdUsn0ns84/jfUSw1+EYpH4DS1rQtn/3ZSmtVClERpXKpQ7F5CH5fAi3DeHHBTB+injH5EjVdI+J7Zen7qAzKYAxAKWhWmHHNwC+Pn/ZaSQJ+Tm/XYeIjZlyvfG+4l6pjRNQije4N48VnXTdbQlTEqvdT4eciJEtgITo2jBftmPYyJDZRlVG+NQyzEzqiCKYxtLpaTFJZZ9Jr/N+3Jjl0Ha+E2VH0ZT1o+i6jsCCvwemec103q+Wt8lXiPpwLoDVIo9tKpVJLdV2ULBn7HkRXsr4HAgrg8Xxvh4FfwDhfVVAAFhMfOZ/26kmrB2c4vf2e82mvzu7TziqyaCh1Y0/yOumsvFV+NAzzyjBetn1TPReItEaGB+dYpZBWTmySKBhvZiAnfKrcBfNMa8UDqFAMftQ+DLsXSlmDzbI8Wu7PtiG8PgzP8gSWtqNCiIrw8/Vraa4LNsEoX+WhBNbR98DSKoBzvnc1S9H1B5+V8jaOn7676yf2ZMb59Wdrni5MfJRWltHojzswPiS+gKgOwkcQXRkV8143zDNdf9FIJXSI4EAhhxmXDD4HIi0cz89cwjBetlXKhJlP2eUde/RA9uiBwHzArHjYSTtenjkVM6yQPbil0jT0WYCaVHkpluKI3H5EW3NUSkq1MsQKxeC66eoISlulrtxdIAfMJ5OnybY9eqDJ02SbXfet516EEIzS51WsTF03W+vqe2kMwE/UaQHJK/gYfAF38iEqyUe0bgXYbRP8L8O4TJgu3APQE61bESXDMrb90DUMU3g+Uxpmfjm1sgbpgjDz6XQyWUhe8SoItc/S2dQLMnVmf3rr2fKINoGPbHsx0DNbwtQN8z+SB0d4+Rh4rjhz+QIahQYTs1YHcLckW0P6Jf22y+VSDUtxALnLwOlKrtk9DfcjVZdzMoSoCFkOCDMux+OhZRhmotvpulklhH8TgBx23d3gs+D364UQlX55qyyxGKjqK/VOopsvy6FB/vwyPoztYTf4Udq+j80DcHr7vcdPezUm7MpM8pmf75zvv40c/M2bNjHfE+gYXuWhAKFJ2ta9OBz0kxURpS8Ftu1hh13eQfSsGwFVvZgBruL8cxnM3Bvbw/ZydNy2h32we6q4rLr0d102EzFzLyqvYTqZdhSzUj04u0+nbl82w8riAEQcU8q9mCOh8v+ZU1f1Sc/3U4PnlEqlhlSpsttLdTdNPlgJrjKw5zgjh11+K7dW6H1GK6Cu6nvbfuiqLvLK0OV9H3RzEycChSr4GF8Z/CHOzxfNwcH24eCOQB+hKDkmwmu/iOhevLtpiXdfqknlSsJ4PLTs0UP92TySdFAsVAVpH1XBFCUMZZR7Mpl2FbKIhTsrTF2NpioFAsCfmZik5zCXGgvnge+Wz1mOA3jmY+hhXFSsXnR+jsr/J6SL76gSs/zUYPH8t+y3Yitt/YZnRYRw4hLJxuOhxcyyyWZmHaUia98DgKrvEQjWzhXAdnNwv3046MUNPufXny3nfL/7+GmvFlWmK959qYrDQZ+A31JsAFIljc5I20okS1pse9gf28Mje/S/274yOMWyiRtHgkh9gMgotzfwXCeqASEqQuFDO0lMaGa+kB5YNssZSeIAy3I4ksBabeEvheyZUqljBpYq9TetteHNkNJA59ck12sk/82XrZVErLnvgxZAdW6SN28+i+Yg064kwfRdVSQ5ESndg7T4yqBtjx52Z0GcxNZBRKQ+CDNH73ADIH5Z6h9VxYFED6NaAfFCu5PJpCc9iwMzuLaoAJhxLQmsiaCJKfP/sy7zehaThOfYQF16OKW1QZLsTwAAcz/J9U9PpTtFy/J2FXgrLlJS9L30eZ63K3UBCNSYb/CRIvAm3t20lvz8lVlwDzIqpTgcZ+SMx98uZtYBgY8U/tOMTOZcFsrlqZB9nki5PJ9thT9bfBj9GEU/dGUgDkCgBUuO4Pa9h2y5fS8OoPL/VTNkHCoZ4a8++MlGS7CV1tpgXm1H61Jp6sg+J0o3JtR9D2n7cqQW5rzduBhAorf/iObgQBwO+n6EMfb8jFTh8r/X1PYCo9GwN3ma7iqXUzzqm5Blo0hM7JkV5y8f1RaPect4rIgDqJRk2uW4RRnlrkqpXOosy+efn0dei9dUyiSi9cGPebWkVgDEp0y0E7est3046BHw20rmfo7oulk1Ki9Z9i/Nur7jjJzpZPpB5RIwsBFlpIa2k5+riYQn9iWf+XGAUAXk3A/VwtfVAKXPmyD7T43nqsgSl1Tr5FlKbuV9rnQNNk5+fR9SAMy4ZsLuY29fWa8/9/OZ79f0WrDMRPg9IKJamra8KLp7pzj8n1SCZUQ16xAlU0CeGS4NaN0tf6BKuGHW6pJg1NwPlcUBKpVKjSAJ/ibM/lPhOCNVarCMTMqGSL4pR1Klr1IU6Uz3zfT9Qi0AA784n/bqTm/vLnTJrFGvTPc2Tz8/f8JLWgCyrcUSSc+n6BhBbkQFcpJ8F5UZziz/jZjdcK4HtHoomBcYyDIZmUsNWQQ7afZfFKrU4NB5KVN/Z6hclBQTSF32YdrYxyb6fq4AmGg3tka/dSv8twdV427+XZEvFwHPvmIifJehJj9Kd+mEyo5sUALzktjoaxVpsWCWzqKy4iDfvastfXq30NzyrEyyTTtSZv8pUKYGL5E11uBbDbJra4lqRRRWcRZ51tH3Gj3HbOYKIHG1HvgEa6gczJOIBJtZOfBZVCUZ4A1+b19AGekjy6ugqtiLs2gqlVc1eTqrOjFmMpneSX670D2Wvz/xskIMm54Zsv+UqAZG4F6XK5V7qyaRmLRyw3jZViz3ZXNHMva9OpWZrWAyU+otwZzz/c7j+V6mAp1N4fvuykypYDmwYZidSsVszf7phtk1KuY9aYo8fQAEdXbfOlBvT0bV8lb5SqbMDMOsM6afZe1Fye84I0eRyRYkdFyZdLJ439wi8sqB4ZN1qXGGN4nIU2l1w+zKBp9Xq4+PsvbY5VYWObL2vfStQwj3feYNQeZv+cn5JaB5YdvDjlF5+RpRy3WkNQA0gmUjFLMZCTOfLhffbAJ2+Yg07VailGq+MrsA6CsDgoCfIjbDvI5LZ9WILxjhHX+ehQknxERtwuKTLftPgW0P+0blZR/S/l2c5bLgOCPHMMwjUHggEdH78lbpjW6YfQJ+f/7NFc8a80qbz6yz7xcUgHj3pQra6hHhddKXgPpxgyvx7ksnp5eA5sbkafK2vFX+jJzW7GeFPXm0lZbxeGhVKq8OGLiSVxB6yixaf7HFriImEODpaXpR3ior3B8AqsIc5mvVSzjy2ORF0uh1Hqm/Kmx72DcM80Ru9s93/4ncwMp/ZjqryLHOvp+7AH767v18PZ/w0ywDL2mNwGNvvz1zD9bS4SlxnJFjjx4OwLyiyU6OX3p5lI9k2RiN/rhj192NyVKUw+7F5Gm6m2Qmisi4AzCLE4ShiGtWNckVcnQVcuTmatj2sJMgM1QKM5/m9cys1PfAtarv5wpgXqMfZl4jsH046CVJx53v6qMoIc6MRr9nuWxWEuwV/6T5AdnyNn542okqvdwkXmXjcMdTaom+yzWYD2z729tUu9bKM+4A4FrVzmSi9VXNrZT9p0CuqPIP0I5Gwx67SFNJeg3mg7ytxee+x4dUfT96qKv6bG41iMNBP0U2n8Uun8S5B/O2332polSuE9MxVnAPmGg76+vBg1Qqr2quO6kSUY2XkjaIYRHBcl300/htsmBMki2al7eXnpH03v72VzUGVzHLNWc4GuEu7XdYJst3Uq2uJJEjy7Vpt+dW/d5pttP2lwLrC8+O/5s/PU0vErdTeSnb0fPaHj3Uk8sR7nsCWcx8keQ3f1YAzcGBv8afBivJS0CDBF4Cmi51mHH++GmvlVK+goIfllUVQB485wGc711lMNdTlxBn3PTTYn7qpJStoOCHJaLUd6MsBA79PfvO/Bd6ZiXVS0ATuAcWu08Hq74qvKDge6PrZlXTpsJ1Sw4I0k1e/VWDjQWbpSsHSTcCjcFJsunnwn1nbwXy3INEbxIqKPizYBhmJy6TkMBHq+YwpCFy6dCzCOJf4hlH2ncDpHkNeEHBn4UkCoBd3tnUG6uAGAVQUFCQH7EKgDnRq+Hy5Hu8HbigoGAB70Uj9tIe/5ugUAAFBRuCGT2N2Hrec5AcZteaTt3+X/x17gUFBQUFBQU/FP8PTPqZ5t6bJ18AAAAASUVORK5CYII=" alt="ShowMojo"></div>
+    <div class="vs-mid">VS</div>
+    <div class="vs-side tt"><img src="data:image/png;base64,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" alt="Tenant Turner"></div>
+  </div>
+
+  <!-- 1. SUMMARY -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="num">1</span>Summary</div>
+    </div>
+    <div class="summary-banner" id="summaryBanner"></div>
+  </div>
+
+  <!-- 2. OVERALL -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="num">2</span>Overall — This Month</div>
+      <div class="section-sub" id="overallNote"></div>
+    </div>
+    <div class="card-grid" id="cardGrid"></div>
+
+    <div id="compareBarsWrap">
+      <div class="subsection-label">SM vs. TT — campaigns head-to-head this month</div>
+      <div class="bar-grid" id="barGridCampaigns"></div>
+    </div>
+  </div>
+
+  <!-- 3. CAMPAIGNS TABLE -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="num">3</span>Campaigns — Breakdown</div>
+      <div class="section-sub" id="campaignNote"></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Campaign &amp; Objective</th>
+            <th>Spend</th>
+            <th>Impressions</th>
+            <th>Clicks</th>
+            <th>Reach</th>
+            <th>CTR</th>
+            <th>Eng. Rate</th>
+            <th>Social Actions</th>
+            <th>Video Plays</th>
+            <th>Conversions</th>
+          </tr>
+        </thead>
+        <tbody id="campaignBody"></tbody>
+      </table>
+    </div>
+    <div class="footnote">"–" means that campaign had no recorded activity in the selected month. Totals row sums every campaign line for that brand.</div>
+  </div>
+
+  <!-- 4. ANALYTICS TABLE -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="num">4</span>Page Analytics — This Month</div>
+      <div class="section-sub" id="analyticsNote"></div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:16px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Brand</th>
+            <th>New Followers</th>
+            <th>Total Followers</th>
+            <th>Organic Impr.</th>
+            <th>Sponsored Impr.</th>
+          </tr>
+        </thead>
+        <tbody id="analyticsBody"></tbody>
+      </table>
+    </div>
+    <div class="subsection-label">At a glance</div>
+    <div class="bar-grid" id="barGridAnalyticsMonth"></div>
+  </div>
+
+  <!-- 5. TRENDS -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title"><span class="num">5</span>Trend Across All Months</div>
+      <div class="section-sub">SM vs. TT, October 2025 – July 2026. Switch metric with the buttons below.</div>
+    </div>
+    <div class="trend-card">
+      <div class="pill-row">
+        <span class="pill-group-label">Campaigns</span>
+        <button class="pill" data-metric="spend">Spend</button>
+        <button class="pill" data-metric="impressions">Impressions</button>
+        <button class="pill" data-metric="clicks">Clicks</button>
+        <button class="pill" data-metric="ctr">Avg. CTR</button>
+        <button class="pill" data-metric="engagement_rate">Eng. Rate</button>
+        <button class="pill" data-metric="conversions">Conversions</button>
+      </div>
+      <div class="pill-row">
+        <span class="pill-group-label">Analytics</span>
+        <button class="pill" data-metric="new_followers">New Followers</button>
+        <button class="pill" data-metric="total_followers">Total Followers</button>
+        <button class="pill" data-metric="organic_impressions">Organic Impr.</button>
+        <button class="pill" data-metric="sponsored_impressions">Sponsored Impr.</button>
+      </div>
+      <div class="trend-legend" id="trendLegend"></div>
+      <div class="trend-canvas-wrap"><canvas id="trendCanvas"></canvas></div>
+    </div>
+  </div>
+
+  <div class="page-footer">Source: SM &amp; TT LinkedIn Campaign &amp; Analytics exports · Oct 2025 – Jul 2026 · Generated for internal reporting</div>
+
+</div>
+
+<script id="raw-data" type="application/json">
+{"months": ["October", "November", "December", "January", "February", "March", "April", "May", "June", "July"], "campaign_rows": [{"date": "2025-10-31", "month": "October", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 2397.68, "impressions": 19885, "clicks": 1044, "reach": 12268, "ctr": 0.0525, "engagement_rate": 0.0532, "social_actions": 1013, "video_plays": 0, "conversions": 0}, {"date": "2025-10-31", "month": "October", "brand": "SM", "campaign": "SM S01 | Engagement | Boosted Organic Social", "spend": 197.63, "impressions": 7383, "clicks": 56, "reach": 2484, "ctr": 0.0076, "engagement_rate": 0.0076, "social_actions": 32, "video_plays": 0, "conversions": 0}, {"date": "2025-10-31", "month": "October", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 0, "impressions": 427, "clicks": 0, "reach": 247, "ctr": 0, "engagement_rate": 0, "social_actions": 1, "video_plays": 0, "conversions": 0}, {"date": "2025-10-31", "month": "October", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 0, "impressions": 0, "clicks": 0, "reach": 0, "ctr": 0, "engagement_rate": 0, "social_actions": 0, "video_plays": 0, "conversions": 0}, {"date": "2025-10-31", "month": "October", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 1501.45, "impressions": 12770, "clicks": 945, "reach": 9339, "ctr": 0.074, "engagement_rate": 0.0753, "social_actions": 927, "video_plays": 0, "conversions": 0}, {"date": "2025-10-31", "month": "October", "brand": "TT", "campaign": "TT S01 | Engagement | Boosted Organic Social", "spend": 50, "impressions": 299, "clicks": 16, "reach": 89, "ctr": 0.0535, "engagement_rate": 0.0535, "social_actions": 14, "video_plays": 0, "conversions": 0}, {"date": "2025-10-31", "month": "October", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 18.2, "impressions": 783, "clicks": 5, "reach": 347, "ctr": 0.0064, "engagement_rate": 0.0115, "social_actions": 4, "video_plays": 0, "conversions": 0}, {"date": "2025-10-31", "month": "October", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 0, "impressions": 0, "clicks": 0, "reach": 0, "ctr": 0, "engagement_rate": 0, "social_actions": 0, "video_plays": 0, "conversions": 0}, {"date": "2025-11-30", "month": "November", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 4605.79, "impressions": 52806, "clicks": 1700, "reach": 25228, "ctr": 0.0322, "engagement_rate": 0.0329, "social_actions": 1525, "video_plays": 26749, "conversions": 3}, {"date": "2025-11-30", "month": "November", "brand": "SM", "campaign": "SM S01 | Engagement | Boosted Organic Social", "spend": 527.87, "impressions": 14513, "clicks": 111, "reach": 3500, "ctr": 0.076, "engagement_rate": 0.008, "social_actions": 62, "video_plays": 0, "conversions": 2}, {"date": "2025-11-30", "month": "November", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 379.24, "impressions": 5551, "clicks": 28, "reach": 1245, "ctr": 0.0076, "engagement_rate": 0.0099, "social_actions": 20, "video_plays": 0, "conversions": 0}, {"date": "2025-11-30", "month": "November", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 1022.12, "impressions": 9278, "clicks": 215, "reach": 1837, "ctr": 0.0232, "engagement_rate": 0.0246, "social_actions": 174, "video_plays": 3154, "conversions": 0}, {"date": "2025-11-30", "month": "November", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 2823.69, "impressions": 32995, "clicks": 1702, "reach": 19833, "ctr": 0.0516, "engagement_rate": 0.0527, "social_actions": 1601, "video_plays": 12632, "conversions": 1}, {"date": "2025-11-30", "month": "November", "brand": "TT", "campaign": "TT S01 | Engagement | Boosted Organic Social", "spend": 1671.77, "impressions": 35346, "clicks": 617, "reach": 19465, "ctr": 0.0175, "engagement_rate": 0.0177, "social_actions": 456, "video_plays": 0, "conversions": 2}, {"date": "2025-11-30", "month": "November", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 55.63, "impressions": 1264, "clicks": 15, "reach": 553, "ctr": 0.0119, "engagement_rate": 0.0174, "social_actions": 7, "video_plays": 0, "conversions": 0}, {"date": "2025-11-30", "month": "November", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 1748.18, "impressions": 11537, "clicks": 321, "reach": 2267, "ctr": 0.0278, "engagement_rate": 0.0285, "social_actions": 233, "video_plays": 3072, "conversions": 1}, {"date": "2025-12-31", "month": "December", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 515.72, "impressions": 5706, "clicks": 199, "reach": 5111, "ctr": 0.0349, "engagement_rate": 0.0351, "social_actions": 177, "video_plays": 2169, "conversions": 2}, {"date": "2025-12-31", "month": "December", "brand": "SM", "campaign": "SM S01 | Engagement | Boosted Organic Social", "spend": 520.91, "impressions": 9687, "clicks": 104, "reach": 2830, "ctr": 0.0107, "engagement_rate": 0.0108, "social_actions": 57, "video_plays": 0, "conversions": 0}, {"date": "2025-12-31", "month": "December", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 681.41, "impressions": 11085, "clicks": 48, "reach": 1304, "ctr": 0.0043, "engagement_rate": 0.0083, "social_actions": 28, "video_plays": 0, "conversions": 0}, {"date": "2025-12-31", "month": "December", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 3571.72, "impressions": 16924, "clicks": 626, "reach": 2272, "ctr": 0.037, "engagement_rate": 0.0375, "social_actions": 574, "video_plays": 0, "conversions": 1}, {"date": "2025-12-31", "month": "December", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 1303.77, "impressions": 14851, "clicks": 1172, "reach": 8035, "ctr": 0.0789, "engagement_rate": 0.0795, "social_actions": 1119, "video_plays": 0, "conversions": 5}, {"date": "2025-12-31", "month": "December", "brand": "TT", "campaign": "TT S01 | Engagement | Boosted Organic Social", "spend": 1086.68, "impressions": 24056, "clicks": 554, "reach": 13043, "ctr": 0.023, "engagement_rate": 0.0234, "social_actions": 418, "video_plays": 0, "conversions": 1}, {"date": "2025-12-31", "month": "December", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 31.97, "impressions": 1347, "clicks": 6, "reach": 489, "ctr": 0.0045, "engagement_rate": 0.0119, "social_actions": 10, "video_plays": 0, "conversions": 1}, {"date": "2025-12-31", "month": "December", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 3251.77, "impressions": 14780, "clicks": 620, "reach": 2275, "ctr": 0.0419, "engagement_rate": 0.0425, "social_actions": 509, "video_plays": 0, "conversions": 6}, {"date": "2026-01-31", "month": "January", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 2000, "impressions": 15035, "clicks": 559, "reach": 12113, "ctr": 0.0372, "engagement_rate": 0.0378, "social_actions": 494, "video_plays": 7553, "conversions": 5}, {"date": "2026-01-31", "month": "January", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 431.61, "impressions": 12352, "clicks": 68, "reach": 1868, "ctr": 0.0055, "engagement_rate": 0.0106, "social_actions": 54, "video_plays": 0, "conversions": 0}, {"date": "2026-01-31", "month": "January", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 5406.15, "impressions": 28794, "clicks": 908, "reach": 2955, "ctr": 0.0314, "engagement_rate": 0.0321, "social_actions": 824, "video_plays": 0, "conversions": 1}, {"date": "2026-01-31", "month": "January", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 2218.14, "impressions": 30012, "clicks": 2586, "reach": 16997, "ctr": 0.0862, "engagement_rate": 0.0867, "social_actions": 2543, "video_plays": 0, "conversions": 0}, {"date": "2026-01-31", "month": "January", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 75.05, "impressions": 2308, "clicks": 12, "reach": 792, "ctr": 0.0052, "engagement_rate": 0.013, "social_actions": 17, "video_plays": 0, "conversions": 0}, {"date": "2026-01-31", "month": "January", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 1519.88, "impressions": 9806, "clicks": 405, "reach": 2024, "ctr": 0.0413, "engagement_rate": 0.0421, "social_actions": 367, "video_plays": 0, "conversions": 3}, {"date": "2026-02-28", "month": "February", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 3076.1, "impressions": 20671, "clicks": 1125, "reach": 13818, "ctr": 0.0544, "engagement_rate": 0.0553, "social_actions": 1076, "video_plays": 9417, "conversions": 5}, {"date": "2026-02-28", "month": "February", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 861.23, "impressions": 15016, "clicks": 73, "reach": 2125, "ctr": 0.0049, "engagement_rate": 0.01, "social_actions": 59, "video_plays": 287, "conversions": 1}, {"date": "2026-02-28", "month": "February", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 1686.01, "impressions": 7057, "clicks": 296, "reach": 1648, "ctr": 0.0419, "engagement_rate": 0.0421, "social_actions": 275, "video_plays": 1156, "conversions": 0}, {"date": "2026-02-28", "month": "February", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 2402.26, "impressions": 34108, "clicks": 2276, "reach": 23879, "ctr": 0.0667, "engagement_rate": 0.0679, "social_actions": 2122, "video_plays": 9901, "conversions": 1}, {"date": "2026-02-28", "month": "February", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 89.71, "impressions": 3274, "clicks": 14, "reach": 1057, "ctr": 0.0043, "engagement_rate": 0.011, "social_actions": 18, "video_plays": 0, "conversions": 0}, {"date": "2026-02-28", "month": "February", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 1280.83, "impressions": 6361, "clicks": 324, "reach": 1777, "ctr": 0.0509, "engagement_rate": 0.0524, "social_actions": 310, "video_plays": 1407, "conversions": 3}, {"date": "2026-03-31", "month": "March", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 2685, "impressions": 91406, "clicks": 4889, "reach": 37667, "ctr": 0.0535, "engagement_rate": 0.0551, "social_actions": 4825, "video_plays": 0, "conversions": 3}, {"date": "2026-03-31", "month": "March", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 1803.48, "impressions": 45757, "clicks": 176, "reach": 4475, "ctr": 0.0038, "engagement_rate": 0.0131, "social_actions": 366, "video_plays": 18240, "conversions": 0}, {"date": "2026-03-31", "month": "March", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 91.21, "impressions": 595, "clicks": 14, "reach": 426, "ctr": 0.0235, "engagement_rate": 0.0235, "social_actions": 12, "video_plays": 0, "conversions": 0}, {"date": "2026-03-31", "month": "March", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 1982.32, "impressions": 19090, "clicks": 1350, "reach": 12181, "ctr": 0.0707, "engagement_rate": 0.0743, "social_actions": 1383, "video_plays": 0, "conversions": 1}, {"date": "2026-03-31", "month": "March", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 219.96, "impressions": 5681, "clicks": 34, "reach": 1636, "ctr": 0.006, "engagement_rate": 0.0151, "social_actions": 46, "video_plays": 0, "conversions": 0}, {"date": "2026-03-31", "month": "March", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 1376.55, "impressions": 12439, "clicks": 355, "reach": 2344, "ctr": 0.0285, "engagement_rate": 0.0301, "social_actions": 339, "video_plays": 0, "conversions": 10}, {"date": "2026-04-30", "month": "April", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 2244.67, "impressions": 17224, "clicks": 1116, "reach": 1225, "ctr": 0.0648, "engagement_rate": 0.0698, "social_actions": 1165, "video_plays": 0, "conversions": 2}, {"date": "2026-04-30", "month": "April", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 1195.6, "impressions": 25331, "clicks": 122, "reach": 3856, "ctr": 0.0048, "engagement_rate": 0.0148, "social_actions": 213, "video_plays": 7309, "conversions": 3}, {"date": "2026-04-30", "month": "April", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 640.88, "impressions": 6040, "clicks": 119, "reach": 1468, "ctr": 0.0197, "engagement_rate": 0.0227, "social_actions": 113, "video_plays": 0, "conversions": 4}, {"date": "2026-04-30", "month": "April", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 2064.66, "impressions": 12775, "clicks": 1067, "reach": 9695, "ctr": 0.0835, "engagement_rate": 0.0876, "social_actions": 1086, "video_plays": 0, "conversions": 0}, {"date": "2026-04-30", "month": "April", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 110.81, "impressions": 4405, "clicks": 17, "reach": 1191, "ctr": 0.0039, "engagement_rate": 0.0118, "social_actions": 26, "video_plays": 0, "conversions": 0}, {"date": "2026-04-30", "month": "April", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 957.02, "impressions": 8413, "clicks": 202, "reach": 2030, "ctr": 0.024, "engagement_rate": 0.0277, "social_actions": 188, "video_plays": 0, "conversions": 3}, {"date": "2026-05-31", "month": "May", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 1805.34, "impressions": 15662, "clicks": 1121, "reach": 9868, "ctr": 0.0716, "engagement_rate": 0.0755, "social_actions": 1151, "video_plays": 0, "conversions": 6}, {"date": "2026-05-31", "month": "May", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 747.16, "impressions": 17415, "clicks": 70, "reach": 3741, "ctr": 0.004, "engagement_rate": 0.0138, "social_actions": 149, "video_plays": 10470, "conversions": 6}, {"date": "2026-05-31", "month": "May", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 0, "impressions": 0, "clicks": 0, "reach": 0, "ctr": 0, "engagement_rate": 0, "social_actions": 0, "video_plays": 0, "conversions": 0}, {"date": "2026-05-31", "month": "May", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 1660.39, "impressions": 13930, "clicks": 1180, "reach": 9919, "ctr": 0.0847, "engagement_rate": 0.0899, "social_actions": 1224, "video_plays": 0, "conversions": 0}, {"date": "2026-05-31", "month": "May", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 77.84, "impressions": 2562, "clicks": 15, "reach": 787, "ctr": 0.0059, "engagement_rate": 0.0109, "social_actions": 11, "video_plays": 0, "conversions": 1}, {"date": "2026-05-31", "month": "May", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 570, "impressions": 6788, "clicks": 97, "reach": 1623, "ctr": 0.0143, "engagement_rate": 0.0161, "social_actions": 76, "video_plays": 0, "conversions": 2}, {"date": "2026-06-30", "month": "June", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 617.09, "impressions": 7365, "clicks": 318, "reach": 5391, "ctr": 0.0432, "engagement_rate": 0.047, "social_actions": 329, "video_plays": 0, "conversions": 3}, {"date": "2026-06-30", "month": "June", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 185.8, "impressions": 5539, "clicks": 16, "reach": 1589, "ctr": 0.0029, "engagement_rate": 0.0184, "social_actions": 78, "video_plays": 5720, "conversions": 0}, {"date": "2026-06-30", "month": "June", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 635.74, "impressions": 2547, "clicks": 153, "reach": 957, "ctr": 0.0601, "engagement_rate": 0.064, "social_actions": 153, "video_plays": 427, "conversions": 1}, {"date": "2026-06-30", "month": "June", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 2302.55, "impressions": 20876, "clicks": 1310, "reach": 13529, "ctr": 0.0628, "engagement_rate": 0.0654, "social_actions": 1136, "video_plays": 11708, "conversions": 8}, {"date": "2026-06-30", "month": "June", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 0, "impressions": 0, "clicks": 0, "reach": 0, "ctr": 0, "engagement_rate": 0, "social_actions": 0, "video_plays": 0, "conversions": 0}, {"date": "2026-06-30", "month": "June", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 390.83, "impressions": 4540, "clicks": 63, "reach": 1201, "ctr": 0.0139, "engagement_rate": 0.0161, "social_actions": 48, "video_plays": 0, "conversions": 0}, {"date": "2026-07-31", "month": "July", "brand": "SM", "campaign": "SM S01 | Engagement | Thought Leadership", "spend": 2228.58, "impressions": 17129, "clicks": 1064, "reach": 11336, "ctr": 0.0621, "engagement_rate": 0.0688, "social_actions": 1128, "video_plays": 0, "conversions": 0}, {"date": "2026-07-31", "month": "July", "brand": "SM", "campaign": "SM S02 | Website Visits | Thought Leadership", "spend": 0, "impressions": 0, "clicks": 0, "reach": 0, "ctr": 0, "engagement_rate": 0, "social_actions": 0, "video_plays": 0, "conversions": 0}, {"date": "2026-07-31", "month": "July", "brand": "SM", "campaign": "SM S02 | Engagement | SM Customers", "spend": 1103.18, "impressions": 5310, "clicks": 344, "reach": 1413, "ctr": 0.0648, "engagement_rate": 0.0693, "social_actions": 354, "video_plays": 0, "conversions": 2}, {"date": "2026-07-31", "month": "July", "brand": "TT", "campaign": "TT S01 | Engagement | Thought Leadership", "spend": 1707.79, "impressions": 12558, "clicks": 953, "reach": 9132, "ctr": 0.0759, "engagement_rate": 0.0811, "social_actions": 989, "video_plays": 0, "conversions": 0}, {"date": "2026-07-31", "month": "July", "brand": "TT", "campaign": "TT S02 | Website Visits | Thought Leadership", "spend": 0, "impressions": 0, "clicks": 0, "reach": 0, "ctr": 0, "engagement_rate": 0, "social_actions": 0, "video_plays": 0, "conversions": 0}, {"date": "2026-07-31", "month": "July", "brand": "TT", "campaign": "TT S02 | Engagement | TT Customers", "spend": 444.31, "impressions": 6929, "clicks": 83, "reach": 1496, "ctr": 0.012, "engagement_rate": 0.0121, "social_actions": 35, "video_plays": 0, "conversions": 0}], "analytics_rows": [{"date": "2025-10-31", "month": "October", "brand": "SM", "new_followers": 148, "total_followers": 4052, "organic_impressions": 3789, "sponsored_impressions": 41704}, {"date": "2025-10-31", "month": "October", "brand": "TT", "new_followers": 67, "total_followers": 1638, "organic_impressions": 4516, "sponsored_impressions": 14023}, {"date": "2025-11-30", "month": "November", "brand": "SM", "new_followers": 136, "total_followers": 4128, "organic_impressions": 4616, "sponsored_impressions": 80119}, {"date": "2025-11-30", "month": "November", "brand": "TT", "new_followers": 147, "total_followers": 1725, "organic_impressions": 4550, "sponsored_impressions": 79359}, {"date": "2025-12-31", "month": "December", "brand": "SM", "new_followers": 43, "total_followers": 4180, "organic_impressions": 2585, "sponsored_impressions": 43402}, {"date": "2025-12-31", "month": "December", "brand": "TT", "new_followers": 89, "total_followers": 1839, "organic_impressions": 3441, "sponsored_impressions": 55034}, {"date": "2026-01-31", "month": "January", "brand": "SM", "new_followers": 44, "total_followers": 4210, "organic_impressions": 3071, "sponsored_impressions": 67576}, {"date": "2026-01-31", "month": "January", "brand": "TT", "new_followers": 88, "total_followers": 1903, "organic_impressions": 3579, "sponsored_impressions": 61564}, {"date": "2026-02-28", "month": "February", "brand": "SM", "new_followers": 51, "total_followers": 4251, "organic_impressions": 4740, "sponsored_impressions": 42744}, {"date": "2026-02-28", "month": "February", "brand": "TT", "new_followers": 47, "total_followers": 1941, "organic_impressions": 2898, "sponsored_impressions": 43743}, {"date": "2026-03-31", "month": "March", "brand": "SM", "new_followers": 41, "total_followers": 4303, "organic_impressions": 2295, "sponsored_impressions": 137758}, {"date": "2026-03-31", "month": "March", "brand": "TT", "new_followers": 31, "total_followers": 2001, "organic_impressions": 1614, "sponsored_impressions": 37210}, {"date": "2026-04-30", "month": "April", "brand": "SM", "new_followers": 57, "total_followers": 4345, "organic_impressions": 4597, "sponsored_impressions": 48595}, {"date": "2026-04-30", "month": "April", "brand": "TT", "new_followers": 541, "total_followers": 2510, "organic_impressions": 5385, "sponsored_impressions": 25593}, {"date": "2026-05-31", "month": "May", "brand": "SM", "new_followers": 63, "total_followers": 4398, "organic_impressions": 11152, "sponsored_impressions": 31754}, {"date": "2026-05-31", "month": "May", "brand": "TT", "new_followers": 48, "total_followers": 2550, "organic_impressions": 7143, "sponsored_impressions": 22783}, {"date": "2026-06-30", "month": "June", "brand": "SM", "new_followers": 34, "total_followers": 4457, "organic_impressions": 3521, "sponsored_impressions": 15451}, {"date": "2026-06-30", "month": "June", "brand": "TT", "new_followers": 41, "total_followers": 2596, "organic_impressions": 4210, "sponsored_impressions": 25416}, {"date": "2026-07-31", "month": "July", "brand": "SM", "new_followers": 27, "total_followers": 4457, "organic_impressions": 2027, "sponsored_impressions": 22439}, {"date": "2026-07-31", "month": "July", "brand": "TT", "new_followers": 14, "total_followers": 2596, "organic_impressions": 2798, "sponsored_impressions": 19487}]}
+</script>
+
+<script>
+/* ===================== Data setup ===================== */
+const RAW = JSON.parse(document.getElementById('raw-data').textContent);
+
+const YEAR_MAP = {
+  October:2025, November:2025, December:2025,
+  January:2026, February:2026, March:2026, April:2026, May:2026, June:2026, July:2026
+};
+const MONTHS = RAW.months;
+const DEFAULT_MONTH = 'June';
+
+const SM_COLOR = '#115FCE';
+const TT_COLOR = '#FF5500';
+
+function monthLabel(m){ return m + ' ' + YEAR_MAP[m]; }
+function monthShort(m){ return m.slice(0,3) + " '" + String(YEAR_MAP[m]).slice(2); }
+
+/* ---- Aggregate campaign rows: brand+month -> totals ---- */
+function aggregateCampaigns(brand, month){
+  const rows = RAW.campaign_rows.filter(r => r.brand === brand && r.month === month);
+  const totals = { spend:0, impressions:0, clicks:0, reach:0, social_actions:0, video_plays:0, conversions:0, rows:rows };
+  rows.forEach(r=>{
+    totals.spend += r.spend || 0;
+    totals.impressions += r.impressions || 0;
+    totals.clicks += r.clicks || 0;
+    totals.reach += r.reach || 0;
+    totals.social_actions += r.social_actions || 0;
+    totals.video_plays += r.video_plays || 0;
+    totals.conversions += r.conversions || 0;
+  });
+  totals.ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) : 0;
+  totals.engagement_rate = totals.impressions > 0 ? (totals.social_actions / totals.impressions) : 0;
+  return totals;
+}
+
+function getAnalytics(brand, month){
+  const row = RAW.analytics_rows.find(r => r.brand === brand && r.month === month);
+  return row || { new_followers:0, total_followers:0, organic_impressions:0, sponsored_impressions:0 };
+}
+
+function priorMonth(month){
+  const i = MONTHS.indexOf(month);
+  return i > 0 ? MONTHS[i-1] : null;
+}
+
+/* ===================== Formatting helpers ===================== */
+function fmtInt(n){ return Math.round(n).toLocaleString('en-US'); }
+function fmtCurrency(n){ return '$' + n.toLocaleString('en-US', {maximumFractionDigits:0}); }
+function fmtPct(n){ return (n*100).toLocaleString('en-US', {maximumFractionDigits:1, minimumFractionDigits:1}) + '%'; }
+
+const METRIC_META = {
+  spend:{label:'Spend', fmt:fmtCurrency, group:'campaign'},
+  impressions:{label:'Impressions', fmt:fmtInt, group:'campaign'},
+  clicks:{label:'Clicks', fmt:fmtInt, group:'campaign'},
+  ctr:{label:'Avg. CTR', fmt:fmtPct, group:'campaign', isPct:true},
+  engagement_rate:{label:'Eng. Rate', fmt:fmtPct, group:'campaign', isPct:true},
+  conversions:{label:'Conversions', fmt:fmtInt, group:'campaign'},
+  new_followers:{label:'New Followers', fmt:fmtInt, group:'analytics'},
+  total_followers:{label:'Total Followers', fmt:fmtInt, group:'analytics'},
+  organic_impressions:{label:'Organic Impr.', fmt:fmtInt, group:'analytics'},
+  sponsored_impressions:{label:'Sponsored Impr.', fmt:fmtInt, group:'analytics'}
+};
+
+function getMetricValue(brand, month, metric){
+  if(METRIC_META[metric].group === 'campaign'){
+    return aggregateCampaigns(brand, month)[metric];
+  }
+  return getAnalytics(brand, month)[metric];
+}
+
+function deltaHTML(curr, prev, opts){
+  opts = opts || {};
+  if(prev === null || prev === undefined) return '<span class="delta flat">— vs prev month</span>';
+  const isPct = !!opts.isPct;
+  const diff = curr - prev;
+  let cls = 'flat', arrow = '▬';
+  if(Math.abs(diff) > (isPct ? 0.0005 : 0.0001)){
+    cls = diff > 0 ? 'up' : 'down';
+    arrow = diff > 0 ? '▲' : '▼';
+  }
+  let diffLabel;
+  if(isPct){
+    diffLabel = (diff>=0?'+':'') + (diff*100).toFixed(1) + 'pt';
+  } else if(opts.isCurrency){
+    diffLabel = (diff>=0?'+':'-') + fmtCurrency(Math.abs(diff));
+  } else {
+    diffLabel = (diff>=0?'+':'-') + fmtInt(Math.abs(diff));
+  }
+  return `<span class="delta ${cls}">${arrow} ${diffLabel} vs prev month</span>`;
+}
+
+/* Inline (banner-style) delta, plain text with color span, no box */
+function deltaInline(curr, prev, opts){
+  opts = opts || {};
+  if(prev === null || prev === undefined) return '<span class="flat">— vs last month</span>';
+  const isPct = !!opts.isPct;
+  const diff = curr - prev;
+  let cls = 'flat', arrow = '▬';
+  if(Math.abs(diff) > (isPct ? 0.0005 : 0.0001)){
+    cls = diff > 0 ? 'up' : 'down';
+    arrow = diff > 0 ? '▲' : '▼';
+  }
+  let diffLabel;
+  if(isPct){
+    diffLabel = (diff>=0?'+':'') + (diff*100).toFixed(1) + 'pt';
+  } else if(opts.isCurrency){
+    diffLabel = (diff>=0?'+':'-') + fmtCurrency(Math.abs(diff));
+  } else {
+    diffLabel = (diff>=0?'+':'-') + fmtInt(Math.abs(diff));
+  }
+  return `<span class="${cls}">${arrow} ${diffLabel} vs last month</span>`;
+}
+
+/* ===================== Chart registries ===================== */
+let charts = {};
+function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+let trendChart = null;
+let currentMetric = 'spend';
+
+/* ===================== Month select ===================== */
+function populateMonthSelect(){
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = '';
+  MONTHS.forEach(m=>{
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = monthLabel(m);
+    if(m === DEFAULT_MONTH) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+/* ===================== 1. Summary (clean bulleted list) ===================== */
+function renderSummaryBanner(view, month){
+  const el = document.getElementById('summaryBanner');
+  const prev = priorMonth(month);
+  const brands = view === 'comparison' ? ['SM','TT'] : [view];
+  let items = '';
+
+  brands.forEach(b=>{
+    const camp = aggregateCampaigns(b, month);
+    const campPrev = prev ? aggregateCampaigns(b, prev) : null;
+    const an = getAnalytics(b, month);
+    const name = b === 'SM' ? 'ShowMojo' : 'Tenant Turner';
+    const cls = b === 'SM' ? 'sm' : 'tt';
+    const nCampaigns = camp.rows.filter(r => r.impressions > 0 || r.spend > 0).length;
+
+    const spendDelta = campPrev ? ` (${deltaInline(camp.spend, campPrev.spend, {isCurrency:true})})` : '';
+    const followerDelta = ''; // kept out of headline sentence for readability
+
+    items += `<li class="${cls}">
+      <b>${name}</b> spent <b>${fmtCurrency(camp.spend)}</b>${spendDelta} across <b>${nCampaigns}</b> campaign${nCampaigns===1?'':'s'}, reaching <b>${fmtInt(camp.impressions)}</b> impressions at a <b>${fmtPct(camp.ctr)}</b> CTR and <b>${fmtInt(camp.conversions)}</b> conversion${camp.conversions===1?'':'s'}. Page followers grew by <b>${fmtInt(an.new_followers)}</b>, now at <b>${fmtInt(an.total_followers)}</b> total.
+    </li>`;
+  });
+
+  let html = `<div class="summary-month">${monthLabel(month)}</div><ul class="summary-list">${items}</ul>`;
+
+  if(view === 'comparison'){
+    const smC = aggregateCampaigns('SM', month), ttC = aggregateCampaigns('TT', month);
+    const spendLeader = smC.spend >= ttC.spend ? 'ShowMojo' : 'Tenant Turner';
+    const ctrLeader = smC.ctr >= ttC.ctr ? 'ShowMojo' : 'Tenant Turner';
+    html += `<div class="compare-line">${spendLeader} spent more this month · ${ctrLeader} had the stronger click-through rate</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+/* ===================== 2. Overall cards ===================== */
+function brandCardHTML(brand, month){
+  const isSM = brand === 'SM';
+  const logo = isSM ? 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAAxCAYAAAA1I3faAAARfklEQVR4nO2dT3LbyJKHfwlSb/tKATAMPy8edYKmpEUvTfUFTB/AIjUXMH0CUScwNQcYUe4DWLpAi1p6IUo+gdCLHtFBMIS3HZHIWQCkQKIK/wjS7m58EY6wCKCQZKGyMrMyC0BBQcHfFsp6oWjdCkz/T+QoyzOlfzhOb9dZS9sFBQVzMisAABDNwQExmiA08xIogMXgc5DWLZRBQcF6CCmA7cNBj4EqmHvOr/u9JI2Id1+qRFsdEF4DqOYso8Xu04Hz689Wzu0WFPztWVAA262bLpjeBz6yGHwKd3KRdACK1k2LmI6RryKwmGi3sAQKCvJlrgBEc3BAwG/KMxnnTDh3zveukjSct3vA4BPnfL+TR1sFBQUeAQVw85lAjdgrGF+ZuZvKPSiV22B6g9WsAoeJdvKwAnTdrGoa6swkABbBY8x8p2muNRqN7la9T0HBj85cAWw3B48ARIprLTCumZ86qdwDl9og/JROTIAZ19CokVUBCFER5XKp7VkkVE1wR4sZl2B0x+OhFXWmYZh1EM4kMl+O7WE7i7x/R4yKeR95AuPItof9bG2/vF1W9kEI07ebVPq6blZJQ9iaZli2PTzYlBzlwP9FymurIFSJtprbh4NE7oHT2+8B6InWoEYu2gndA4fBJ86n/W5K+eYYxss2iI6jHoAwVCXCexDeG4Z5YtvDTtz54c/4nynELIhVzFwH0E/bqq6bLQC1qEUv5pJI2+7qSL4v8UYl0HJphdAk4Lft5uBevLtpxZ3u9PbuHj/ttdh92mHwBwCW7DwGnzDRjnOeffDrhnkGwsd0g38JomPdMEMzfMGGoYUAdZrrGvkK8tehHH9KKqqk0dl2c3CcxD3wj3UBdEXrpgWXWkT4NzN+Bz+1Vl360w2zS0StVdqYQUQt3TAxtodHebRXkAlhGGY9jRug62aVCG/WKNOfmrwVwIy5eyCaNxcA/XdS9yAvASqVVzWGGzVjXINxwexaROQwsyDSqiA0ALyWXUBELV1/cTkef7vIS86CdDDQQDo3oL4WQf4irEsBzPFXFhrbzYHFLp8Ak37WmV20bkXSIKCLaZukPh9bhNLb0eiPO8WlXV1/0SCtdCZzG0jTjgFcJBS5IGeIqClEpeM4IyfZ+WvJUl2Z6XTqbGmlkDXpuuxsUo61K4AAVdLoDNhytg8Hl6xRO+lgnmUa8tTtI6GVQNDeAOGACgEnEYMfADAef7swDNMBkcxqqaU1QwtyRZRKWh0JlLCum1UQ1dcsTyZ8Bdb7zmLkFARMhwChCebd2BNbt0I0bzqkbd2mSSjSdbOqCvqNRsNekjb8Ad6XH+VaUlkK8oc0LVEwkIrgXyybtABmWAz8V1xMwMsk5P9JtmafHF03q3Hr+nOYr0Hh5CVeQSYhKqJU8pacptOpk9SUjcNTeh55tvuDUheiImK/I/H7FevdlAT7Efi+v/kqfb9JBeAw+DSuuk80BwdgHJMiELcyhDaAdpJT/bX/Th63NQyzDuA4aJKWtTKMimkxow/GSWLFhFliU7kF8BuQVgtaPF67/3LA0z4zXY7HaqtHN8wugFC+wnQy/aB6kHT9RQNEoch69DVmyy8WW0Cj6WmWBJxyWWvBW0GSIsSrGuBW07YbxXMyGb0BUFuQJ9CXBJwncRFlS8sE/mrb37rxcqze98CmFADj3PP595yo00TrVhDzb6sq7fF4aBmVfznSIB7Re90w/5l2wK2Cbphd9Ro2VYnQAqGVLOFoObGJIIt1ACxAWoMIDaNiHkdlusmWSstl7StUA4y0lmxprVwunUPhNpFG77E0aADAdUsn0ns84/jfUSw1+EYpH4DS1rQtn/3ZSmtVClERpXKpQ7F5CH5fAi3DeHHBTB+injH5EjVdI+J7Zen7qAzKYAxAKWhWmHHNwC+Pn/ZaSQJ+Tm/XYeIjZlyvfG+4l6pjRNQije4N48VnXTdbQlTEqvdT4eciJEtgITo2jBftmPYyJDZRlVG+NQyzEzqiCKYxtLpaTFJZZ9Jr/N+3Jjl0Ha+E2VH0ZT1o+i6jsCCvwemec103q+Wt8lXiPpwLoDVIo9tKpVJLdV2ULBn7HkRXsr4HAgrg8Xxvh4FfwDhfVVAAFhMfOZ/26kmrB2c4vf2e82mvzu7TziqyaCh1Y0/yOumsvFV+NAzzyjBetn1TPReItEaGB+dYpZBWTmySKBhvZiAnfKrcBfNMa8UDqFAMftQ+DLsXSlmDzbI8Wu7PtiG8PgzP8gSWtqNCiIrw8/Vraa4LNsEoX+WhBNbR98DSKoBzvnc1S9H1B5+V8jaOn7676yf2ZMb59Wdrni5MfJRWltHojzswPiS+gKgOwkcQXRkV8143zDNdf9FIJXSI4EAhhxmXDD4HIi0cz89cwjBetlXKhJlP2eUde/RA9uiBwHzArHjYSTtenjkVM6yQPbil0jT0WYCaVHkpluKI3H5EW3NUSkq1MsQKxeC66eoISlulrtxdIAfMJ5OnybY9eqDJ02SbXfet516EEIzS51WsTF03W+vqe2kMwE/UaQHJK/gYfAF38iEqyUe0bgXYbRP8L8O4TJgu3APQE61bESXDMrb90DUMU3g+Uxpmfjm1sgbpgjDz6XQyWUhe8SoItc/S2dQLMnVmf3rr2fKINoGPbHsx0DNbwtQN8z+SB0d4+Rh4rjhz+QIahQYTs1YHcLckW0P6Jf22y+VSDUtxALnLwOlKrtk9DfcjVZdzMoSoCFkOCDMux+OhZRhmotvpulklhH8TgBx23d3gs+D364UQlX55qyyxGKjqK/VOopsvy6FB/vwyPoztYTf4Udq+j80DcHr7vcdPezUm7MpM8pmf75zvv40c/M2bNjHfE+gYXuWhAKFJ2ta9OBz0kxURpS8Ftu1hh13eQfSsGwFVvZgBruL8cxnM3Bvbw/ZydNy2h32we6q4rLr0d102EzFzLyqvYTqZdhSzUj04u0+nbl82w8riAEQcU8q9mCOh8v+ZU1f1Sc/3U4PnlEqlhlSpsttLdTdNPlgJrjKw5zgjh11+K7dW6H1GK6Cu6nvbfuiqLvLK0OV9H3RzEycChSr4GF8Z/CHOzxfNwcH24eCOQB+hKDkmwmu/iOhevLtpiXdfqknlSsJ4PLTs0UP92TySdFAsVAVpH1XBFCUMZZR7Mpl2FbKIhTsrTF2NpioFAsCfmZik5zCXGgvnge+Wz1mOA3jmY+hhXFSsXnR+jsr/J6SL76gSs/zUYPH8t+y3Yitt/YZnRYRw4hLJxuOhxcyyyWZmHaUia98DgKrvEQjWzhXAdnNwv3046MUNPufXny3nfL/7+GmvFlWmK959qYrDQZ+A31JsAFIljc5I20okS1pse9gf28Mje/S/274yOMWyiRtHgkh9gMgotzfwXCeqASEqQuFDO0lMaGa+kB5YNssZSeIAy3I4ksBabeEvheyZUqljBpYq9TetteHNkNJA59ck12sk/82XrZVErLnvgxZAdW6SN28+i+Yg064kwfRdVSQ5ESndg7T4yqBtjx52Z0GcxNZBRKQ+CDNH73ADIH5Z6h9VxYFED6NaAfFCu5PJpCc9iwMzuLaoAJhxLQmsiaCJKfP/sy7zehaThOfYQF16OKW1QZLsTwAAcz/J9U9PpTtFy/J2FXgrLlJS9L30eZ63K3UBCNSYb/CRIvAm3t20lvz8lVlwDzIqpTgcZ+SMx98uZtYBgY8U/tOMTOZcFsrlqZB9nki5PJ9thT9bfBj9GEU/dGUgDkCgBUuO4Pa9h2y5fS8OoPL/VTNkHCoZ4a8++MlGS7CV1tpgXm1H61Jp6sg+J0o3JtR9D2n7cqQW5rzduBhAorf/iObgQBwO+n6EMfb8jFTh8r/X1PYCo9GwN3ma7iqXUzzqm5Blo0hM7JkV5y8f1RaPect4rIgDqJRk2uW4RRnlrkqpXOosy+efn0dei9dUyiSi9cGPebWkVgDEp0y0E7est3046BHw20rmfo7oulk1Ki9Z9i/Nur7jjJzpZPpB5RIwsBFlpIa2k5+riYQn9iWf+XGAUAXk3A/VwtfVAKXPmyD7T43nqsgSl1Tr5FlKbuV9rnQNNk5+fR9SAMy4ZsLuY29fWa8/9/OZ79f0WrDMRPg9IKJamra8KLp7pzj8n1SCZUQ16xAlU0CeGS4NaN0tf6BKuGHW6pJg1NwPlcUBKpVKjSAJ/ibM/lPhOCNVarCMTMqGSL4pR1Klr1IU6Uz3zfT9Qi0AA784n/bqTm/vLnTJrFGvTPc2Tz8/f8JLWgCyrcUSSc+n6BhBbkQFcpJ8F5UZziz/jZjdcK4HtHoomBcYyDIZmUsNWQQ7afZfFKrU4NB5KVN/Z6hclBQTSF32YdrYxyb6fq4AmGg3tka/dSv8twdV427+XZEvFwHPvmIifJehJj9Kd+mEyo5sUALzktjoaxVpsWCWzqKy4iDfvastfXq30NzyrEyyTTtSZv8pUKYGL5E11uBbDbJra4lqRRRWcRZ51tH3Gj3HbOYKIHG1HvgEa6gczJOIBJtZOfBZVCUZ4A1+b19AGekjy6ugqtiLs2gqlVc1eTqrOjFmMpneSX670D2Wvz/xskIMm54Zsv+UqAZG4F6XK5V7qyaRmLRyw3jZViz3ZXNHMva9OpWZrWAyU+otwZzz/c7j+V6mAp1N4fvuykypYDmwYZidSsVszf7phtk1KuY9aYo8fQAEdXbfOlBvT0bV8lb5SqbMDMOsM6afZe1Fye84I0eRyRYkdFyZdLJ439wi8sqB4ZN1qXGGN4nIU2l1w+zKBp9Xq4+PsvbY5VYWObL2vfStQwj3feYNQeZv+cn5JaB5YdvDjlF5+RpRy3WkNQA0gmUjFLMZCTOfLhffbAJ2+Yg07VailGq+MrsA6CsDgoCfIjbDvI5LZ9WILxjhHX+ehQknxERtwuKTLftPgW0P+0blZR/S/l2c5bLgOCPHMMwjUHggEdH78lbpjW6YfQJ+f/7NFc8a80qbz6yz7xcUgHj3pQra6hHhddKXgPpxgyvx7ksnp5eA5sbkafK2vFX+jJzW7GeFPXm0lZbxeGhVKq8OGLiSVxB6yixaf7HFriImEODpaXpR3ior3B8AqsIc5mvVSzjy2ORF0uh1Hqm/Kmx72DcM80Ru9s93/4ncwMp/ZjqryLHOvp+7AH767v18PZ/w0ywDL2mNwGNvvz1zD9bS4SlxnJFjjx4OwLyiyU6OX3p5lI9k2RiN/rhj192NyVKUw+7F5Gm6m2Qmisi4AzCLE4ShiGtWNckVcnQVcuTmatj2sJMgM1QKM5/m9cys1PfAtarv5wpgXqMfZl4jsH046CVJx53v6qMoIc6MRr9nuWxWEuwV/6T5AdnyNn542okqvdwkXmXjcMdTaom+yzWYD2z729tUu9bKM+4A4FrVzmSi9VXNrZT9p0CuqPIP0I5Gwx67SFNJeg3mg7ytxee+x4dUfT96qKv6bG41iMNBP0U2n8Uun8S5B/O2332polSuE9MxVnAPmGg76+vBg1Qqr2quO6kSUY2XkjaIYRHBcl300/htsmBMki2al7eXnpH03v72VzUGVzHLNWc4GuEu7XdYJst3Uq2uJJEjy7Vpt+dW/d5pttP2lwLrC8+O/5s/PU0vErdTeSnb0fPaHj3Uk8sR7nsCWcx8keQ3f1YAzcGBv8afBivJS0CDBF4Cmi51mHH++GmvlVK+goIfllUVQB485wGc711lMNdTlxBn3PTTYn7qpJStoOCHJaLUd6MsBA79PfvO/Bd6ZiXVS0ATuAcWu08Hq74qvKDge6PrZlXTpsJ1Sw4I0k1e/VWDjQWbpSsHSTcCjcFJsunnwn1nbwXy3INEbxIqKPizYBhmJy6TkMBHq+YwpCFy6dCzCOJf4hlH2ncDpHkNeEHBn4UkCoBd3tnUG6uAGAVQUFCQH7EKgDnRq+Hy5Hu8HbigoGAB70Uj9tIe/5ugUAAFBRuCGT2N2Hrec5AcZteaTt3+X/x17gUFBQUFBQU/FP8PTPqZ5t6bJ18AAAAASUVORK5CYII=' : 'data:image/png;base64,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';
+  const badge = isSM ? 'ShowMojo Campaigns' : 'Tenant Turner Campaigns';
+  const prev = priorMonth(month);
+  const camp = aggregateCampaigns(brand, month);
+  const campPrev = prev ? aggregateCampaigns(brand, prev) : null;
+  const an = getAnalytics(brand, month);
+  const anPrev = prev ? getAnalytics(brand, prev) : null;
+
+  return `
+  <div class="brand-card ${isSM?'sm':'tt'}">
+    <div class="head">
+      <img src="${logo}" alt="${isSM?'ShowMojo':'Tenant Turner'}">
+      <span class="badge">${badge}</span>
+    </div>
+    <div class="metric-block-label">Campaigns</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="val">${fmtCurrency(camp.spend)}</div><div class="lbl">Spend</div>${campPrev?deltaHTML(camp.spend,campPrev.spend,{isCurrency:true}):''}</div>
+      <div class="stat"><div class="val">${fmtInt(camp.impressions)}</div><div class="lbl">Impressions</div>${campPrev?deltaHTML(camp.impressions,campPrev.impressions,{}):''}</div>
+      <div class="stat"><div class="val">${fmtPct(camp.ctr)}</div><div class="lbl">Avg. CTR</div>${campPrev?deltaHTML(camp.ctr,campPrev.ctr,{isPct:true}):''}</div>
+    </div>
+    <div class="metric-block-label">Page Analytics</div>
+    <div class="stat-grid">
+      <div class="stat"><div class="val">${fmtInt(camp.conversions)}</div><div class="lbl">Conversions</div>${campPrev?deltaHTML(camp.conversions,campPrev.conversions,{}):''}</div>
+      <div class="stat"><div class="val">${fmtInt(an.new_followers)}</div><div class="lbl">New Followers</div>${anPrev?deltaHTML(an.new_followers,anPrev.new_followers,{}):''}</div>
+      <div class="stat"><div class="val">${fmtInt(an.total_followers)}</div><div class="lbl">Total Followers</div>${anPrev?deltaHTML(an.total_followers,anPrev.total_followers,{}):''}</div>
+    </div>
+  </div>`;
+}
+
+function renderCards(view, month){
+  const grid = document.getElementById('cardGrid');
+  document.getElementById('overallNote').textContent = `${monthLabel(month)}, vs. ${priorMonth(month) ? monthLabel(priorMonth(month)) : 'no prior month on record'}`;
+  if(view === 'comparison'){
+    grid.className = 'card-grid';
+    grid.innerHTML = brandCardHTML('SM', month) + brandCardHTML('TT', month);
+  } else {
+    grid.className = 'card-grid single';
+    grid.innerHTML = brandCardHTML(view, month);
+  }
+}
+
+/* ===================== 2b. Comparison bar charts ===================== */
+function makeBarPanel(containerId, canvasId, title, smVal, ttVal, formatter){
+  const container = document.getElementById(containerId);
+  const panel = document.createElement('div');
+  panel.className = 'bar-panel';
+  panel.innerHTML = `<div class="title">${title}</div><canvas id="${canvasId}"></canvas>`;
+  container.appendChild(panel);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  destroyChart(canvasId);
+  charts[canvasId] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:['SM','TT'],
+      datasets:[{ data:[smVal, ttVal], backgroundColor:[SM_COLOR, TT_COLOR], borderRadius:4, maxBarThickness:44 }]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>formatter(c.raw)}}},
+      scales:{
+        y:{beginAtZero:true, ticks:{callback:(v)=>formatter(v), font:{size:10}}, grid:{color:'#EFEEE6'}},
+        x:{grid:{display:false}, ticks:{font:{size:11, weight:'700'}}}
+      }
+    }
+  });
+}
+
+function renderCompareBars(view, month){
+  const campWrap = document.getElementById('barGridCampaigns');
+  const container = document.getElementById('compareBarsWrap');
+  campWrap.innerHTML = '';
+
+  if(view !== 'comparison'){ container.style.display = 'none'; return; }
+  container.style.display = '';
+
+  const smC = aggregateCampaigns('SM', month), ttC = aggregateCampaigns('TT', month);
+
+  makeBarPanel('barGridCampaigns','barSpend','Spend', smC.spend, ttC.spend, fmtCurrency);
+  makeBarPanel('barGridCampaigns','barImpressions','Impressions', smC.impressions, ttC.impressions, fmtInt);
+  makeBarPanel('barGridCampaigns','barCTR','Avg. CTR', smC.ctr, ttC.ctr, fmtPct);
+  makeBarPanel('barGridCampaigns','barConversions','Conversions', smC.conversions, ttC.conversions, fmtInt);
+}
+
+/* ===================== 3. Campaigns table ===================== */
+function shortObjective(campaignName){
+  const parts = campaignName.split('|').map(s=>s.trim());
+  return { code: parts[0] || campaignName, objective: parts[1] || '', audience: parts[2] || '' };
+}
+
+function campaignRowHTML(r){
+  const meta = shortObjective(r.campaign);
+  const hasData = r.impressions > 0 || r.clicks > 0 || r.spend > 0;
+  return `
+    <tr>
+      <td><span class="campaign-name">${meta.objective || meta.code}</span><span class="campaign-tag">${meta.audience || meta.code}</span></td>
+      <td>${hasData ? fmtCurrency(r.spend) : '–'}</td>
+      <td>${hasData ? fmtInt(r.impressions) : '–'}</td>
+      <td>${hasData ? fmtInt(r.clicks) : '–'}</td>
+      <td>${hasData ? fmtInt(r.reach) : '–'}</td>
+      <td>${hasData && r.impressions>0 ? fmtPct(r.ctr) : '–'}</td>
+      <td>${hasData && r.impressions>0 ? fmtPct(r.engagement_rate) : '–'}</td>
+      <td>${r.social_actions ? fmtInt(r.social_actions) : '–'}</td>
+      <td>${r.video_plays ? fmtInt(r.video_plays) : '–'}</td>
+      <td>${r.conversions ? fmtInt(r.conversions) : '–'}</td>
+    </tr>`;
+}
+
+function renderCampaignsTable(view, month){
+  const tbody = document.getElementById('campaignBody');
+  document.getElementById('campaignNote').textContent = monthLabel(month);
+  tbody.innerHTML = '';
+  const brands = view === 'comparison' ? ['SM','TT'] : [view];
+
+  brands.forEach(brand=>{
+    const camp = aggregateCampaigns(brand, month);
+    const groupRow = document.createElement('tr');
+    groupRow.className = 'brand-group-row ' + (brand==='SM'?'sm':'tt');
+    groupRow.innerHTML = `<td colspan="10">${brand==='SM' ? 'ShowMojo Campaigns' : 'Tenant Turner Campaigns'}</td>`;
+    tbody.appendChild(groupRow);
+
+    if(camp.rows.length === 0){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="10" style="color:var(--muted);">No campaign data recorded for this month.</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    camp.rows.forEach(r=>{ tbody.insertAdjacentHTML('beforeend', campaignRowHTML(r)); });
+
+    const totalRow = document.createElement('tr');
+    totalRow.className = 'total-row';
+    totalRow.innerHTML = `
+      <td>Total — ${brand==='SM'?'ShowMojo':'Tenant Turner'}</td>
+      <td>${fmtCurrency(camp.spend)}</td>
+      <td>${fmtInt(camp.impressions)}</td>
+      <td>${fmtInt(camp.clicks)}</td>
+      <td>${fmtInt(camp.reach)}</td>
+      <td>${fmtPct(camp.ctr)}</td>
+      <td>${fmtPct(camp.engagement_rate)}</td>
+      <td>${fmtInt(camp.social_actions)}</td>
+      <td>${fmtInt(camp.video_plays)}</td>
+      <td>${fmtInt(camp.conversions)}</td>`;
+    tbody.appendChild(totalRow);
+  });
+}
+
+/* ===================== 4. Analytics: this month only (numbers + bars) ===================== */
+function renderAnalyticsTable(view, month){
+  const tbody = document.getElementById('analyticsBody');
+  document.getElementById('analyticsNote').textContent = monthLabel(month);
+  tbody.innerHTML = '';
+  const brands = view === 'comparison' ? ['SM','TT'] : [view];
+  const prev = priorMonth(month);
+
+  brands.forEach(brand=>{
+    const an = getAnalytics(brand, month);
+    const anPrev = prev ? getAnalytics(brand, prev) : null;
+    const tr = document.createElement('tr');
+    const brandLabel = brand === 'SM'
+      ? `<span style="color:var(--sm-blue-dark);font-weight:700;">ShowMojo</span>`
+      : `<span style="color:var(--tt-orange-dark);font-weight:700;">Tenant Turner</span>`;
+    tr.innerHTML = `
+      <td>${brandLabel}</td>
+      <td>${fmtInt(an.new_followers)}${anPrev ? `<br>${deltaHTML(an.new_followers, anPrev.new_followers, {})}` : ''}</td>
+      <td>${fmtInt(an.total_followers)}${anPrev ? `<br>${deltaHTML(an.total_followers, anPrev.total_followers, {})}` : ''}</td>
+      <td>${fmtInt(an.organic_impressions)}${anPrev ? `<br>${deltaHTML(an.organic_impressions, anPrev.organic_impressions, {})}` : ''}</td>
+      <td>${fmtInt(an.sponsored_impressions)}${anPrev ? `<br>${deltaHTML(an.sponsored_impressions, anPrev.sponsored_impressions, {})}` : ''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderAnalyticsBars(view, month){
+  const wrap = document.getElementById('barGridAnalyticsMonth');
+  wrap.innerHTML = '';
+
+  if(view === 'comparison'){
+    const smA = getAnalytics('SM', month), ttA = getAnalytics('TT', month);
+    makeBarPanel('barGridAnalyticsMonth','barNewFollowersM','New Followers', smA.new_followers, ttA.new_followers, fmtInt);
+    makeBarPanel('barGridAnalyticsMonth','barTotalFollowersM','Total Followers', smA.total_followers, ttA.total_followers, fmtInt);
+    makeBarPanel('barGridAnalyticsMonth','barOrganicM','Organic Impr.', smA.organic_impressions, ttA.organic_impressions, fmtInt);
+    makeBarPanel('barGridAnalyticsMonth','barSponsoredM','Sponsored Impr.', smA.sponsored_impressions, ttA.sponsored_impressions, fmtInt);
+  } else {
+    // Single brand: show this month vs prior month instead of SM vs TT
+    const an = getAnalytics(view, month);
+    const prev = priorMonth(month);
+    const anPrev = prev ? getAnalytics(view, prev) : {new_followers:0,total_followers:0,organic_impressions:0,sponsored_impressions:0};
+    const label = prev ? monthLabel(prev) : 'No prior month';
+    const brandColor = view === 'SM' ? SM_COLOR : TT_COLOR;
+    makeBarPanelLabeled('barGridAnalyticsMonth','barNewFollowersM','New Followers', label, monthLabel(month), anPrev.new_followers, an.new_followers, fmtInt, brandColor);
+    makeBarPanelLabeled('barGridAnalyticsMonth','barTotalFollowersM','Total Followers', label, monthLabel(month), anPrev.total_followers, an.total_followers, fmtInt, brandColor);
+    makeBarPanelLabeled('barGridAnalyticsMonth','barOrganicM','Organic Impr.', label, monthLabel(month), anPrev.organic_impressions, an.organic_impressions, fmtInt, brandColor);
+    makeBarPanelLabeled('barGridAnalyticsMonth','barSponsoredM','Sponsored Impr.', label, monthLabel(month), anPrev.sponsored_impressions, an.sponsored_impressions, fmtInt, brandColor);
+  }
+}
+
+function makeBarPanelLabeled(containerId, canvasId, title, labelA, labelB, valA, valB, formatter, brandColor){
+  const container = document.getElementById(containerId);
+  const panel = document.createElement('div');
+  panel.className = 'bar-panel';
+  panel.innerHTML = `<div class="title">${title}</div><canvas id="${canvasId}"></canvas>`;
+  container.appendChild(panel);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  destroyChart(canvasId);
+  charts[canvasId] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:[labelA, labelB],
+      datasets:[{ data:[valA, valB], backgroundColor:['#C9CEDA', brandColor], borderRadius:4, maxBarThickness:44 }]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:(c)=>formatter(c.raw)}}},
+      scales:{
+        y:{beginAtZero:true, ticks:{callback:(v)=>formatter(v), font:{size:10}}, grid:{color:'#EFEEE6'}},
+        x:{grid:{display:false}, ticks:{font:{size:10, weight:'700'}}}
+      }
+    }
+  });
+}
+
+/* ===================== 5. Trend chart ===================== */
+function renderTrendLegend(view){
+  const legend = document.getElementById('trendLegend');
+  if(view === 'comparison'){
+    legend.innerHTML = `<span><span class="legend-dot" style="background:${SM_COLOR}"></span>ShowMojo</span><span><span class="legend-dot" style="background:${TT_COLOR}"></span>Tenant Turner</span>`;
+  } else {
+    const c = view === 'SM' ? SM_COLOR : TT_COLOR;
+    const name = view === 'SM' ? 'ShowMojo' : 'Tenant Turner';
+    legend.innerHTML = `<span><span class="legend-dot" style="background:${c}"></span>${name}</span>`;
+  }
+}
+
+function renderTrendChart(view, metric){
+  const meta = METRIC_META[metric];
+  const labels = MONTHS.map(monthShort);
+  const datasets = [];
+  if(view === 'comparison' || view === 'SM'){
+    datasets.push({ label:'ShowMojo', data: MONTHS.map(m => getMetricValue('SM', m, metric)),
+      borderColor: SM_COLOR, backgroundColor: SM_COLOR, tension:0.3, pointRadius:3, borderWidth:2.5 });
+  }
+  if(view === 'comparison' || view === 'TT'){
+    datasets.push({ label:'Tenant Turner', data: MONTHS.map(m => getMetricValue('TT', m, metric)),
+      borderColor: TT_COLOR, backgroundColor: TT_COLOR, tension:0.3, pointRadius:3, borderWidth:2.5 });
+  }
+
+  if(trendChart){ trendChart.destroy(); }
+  const ctx = document.getElementById('trendCanvas').getContext('2d');
+  trendChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> `${c.dataset.label}: ${meta.fmt(c.raw)}`}} },
+      scales:{
+        y:{ beginAtZero:true, ticks:{ callback:(v)=>meta.fmt(v), font:{size:11} }, grid:{color:'#EFEEE6'} },
+        x:{ grid:{display:false}, ticks:{font:{size:11}} }
+      },
+      interaction:{ mode:'index', intersect:false }
+    }
+  });
+}
+
+function setActivePill(metric){
+  document.querySelectorAll('.pill').forEach(p=>{ p.classList.toggle('active', p.dataset.metric === metric); });
+}
+
+/* ===================== Master render ===================== */
+function renderVsBanner(view){
+  const smSide = document.querySelector('.vs-side.sm');
+  const ttSide = document.querySelector('.vs-side.tt');
+  smSide.classList.toggle('inactive', view === 'TT');
+  ttSide.classList.toggle('inactive', view === 'SM');
+}
+
+function render(){
+  const view = document.getElementById('viewSelect').value;
+  const month = document.getElementById('monthSelect').value;
+
+  renderVsBanner(view);
+  renderSummaryBanner(view, month);
+  renderCards(view, month);
+  renderCompareBars(view, month);
+  renderCampaignsTable(view, month);
+  renderAnalyticsTable(view, month);
+  renderAnalyticsBars(view, month);
+  renderTrendLegend(view);
+  renderTrendChart(view, currentMetric);
+  setActivePill(currentMetric);
+}
+
+/* ===================== Init ===================== */
+populateMonthSelect();
+document.getElementById('viewSelect').addEventListener('change', render);
+document.getElementById('monthSelect').addEventListener('change', render);
+document.querySelectorAll('.pill').forEach(p=>{
+  p.addEventListener('click', ()=>{
+    currentMetric = p.dataset.metric;
+    setActivePill(currentMetric);
+    renderTrendChart(document.getElementById('viewSelect').value, currentMetric);
+  });
+});
+render();
+
+</script>
+</body>
+</html>
