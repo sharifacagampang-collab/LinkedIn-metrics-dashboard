@@ -354,10 +354,31 @@ const TT_COLOR = '#FF5500';
 function monthLabel(m){ return m + ' ' + YEAR_MAP[m]; }
 function monthShort(m){ return m.slice(0,3) + " '" + String(YEAR_MAP[m]).slice(2); }
 
-/* ---- Aggregate campaign rows: brand+month -> totals ---- */
-function aggregateCampaigns(brand, month){
-  const rows = RAW.campaign_rows.filter(r => r.brand === brand && r.month === month);
-  const totals = { spend:0, impressions:0, clicks:0, reach:0, social_actions:0, video_plays:0, conversions:0, rows:rows };
+/* ---- Resolve a "selection" (single month string, 'ALL_TIME', or an array of months) into an array of months ---- */
+function monthsForSelection(sel){
+  if(Array.isArray(sel)) return sel;
+  if(sel === 'ALL_TIME') return MONTHS.slice();
+  return [sel];
+}
+
+function priorMonthsForSelection(sel){
+  if(sel === 'ALL_TIME') return null;
+  if(Array.isArray(sel)) return null; // priors of priors not needed
+  const p = priorMonth(sel);
+  return p ? [p] : null;
+}
+
+function labelForSelection(sel){
+  if(sel === 'ALL_TIME') return `All Time (${monthShort(MONTHS[0])} – ${monthShort(MONTHS[MONTHS.length-1])})`;
+  if(Array.isArray(sel)) return sel.length === 1 ? monthLabel(sel[0]) : `${monthShort(sel[0])} – ${monthShort(sel[sel.length-1])}`;
+  return monthLabel(sel);
+}
+
+/* ---- Aggregate campaign rows: brand + selection -> totals (grouped by unique campaign across the period) ---- */
+function aggregateCampaigns(brand, sel){
+  const months = monthsForSelection(sel);
+  const rows = RAW.campaign_rows.filter(r => r.brand === brand && months.includes(r.month));
+  const totals = { spend:0, impressions:0, clicks:0, reach:0, social_actions:0, video_plays:0, conversions:0 };
   rows.forEach(r=>{
     totals.spend += r.spend || 0;
     totals.impressions += r.impressions || 0;
@@ -369,12 +390,47 @@ function aggregateCampaigns(brand, month){
   });
   totals.ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) : 0;
   totals.engagement_rate = totals.impressions > 0 ? (totals.social_actions / totals.impressions) : 0;
+
+  // Group rows by campaign name so multi-month selections (e.g. All Time) show one summed line per campaign
+  const grouped = {};
+  const order = [];
+  rows.forEach(r=>{
+    if(!grouped[r.campaign]){
+      grouped[r.campaign] = {campaign:r.campaign, spend:0, impressions:0, clicks:0, reach:0, social_actions:0, video_plays:0, conversions:0};
+      order.push(r.campaign);
+    }
+    const g = grouped[r.campaign];
+    g.spend += r.spend || 0;
+    g.impressions += r.impressions || 0;
+    g.clicks += r.clicks || 0;
+    g.reach += r.reach || 0;
+    g.social_actions += r.social_actions || 0;
+    g.video_plays += r.video_plays || 0;
+    g.conversions += r.conversions || 0;
+  });
+  totals.rows = order.map(name=>{
+    const g = grouped[name];
+    g.ctr = g.impressions > 0 ? g.clicks / g.impressions : 0;
+    g.engagement_rate = g.impressions > 0 ? g.social_actions / g.impressions : 0;
+    return g;
+  });
   return totals;
 }
 
-function getAnalytics(brand, month){
-  const row = RAW.analytics_rows.find(r => r.brand === brand && r.month === month);
-  return row || { new_followers:0, total_followers:0, organic_impressions:0, sponsored_impressions:0 };
+/* ---- Aggregate analytics: new followers / organic / sponsored sum across the period; total followers = latest month's value ---- */
+function getAnalytics(brand, sel){
+  const months = monthsForSelection(sel);
+  const rows = RAW.analytics_rows.filter(r => r.brand === brand && months.includes(r.month));
+  if(rows.length === 0) return { new_followers:0, total_followers:0, organic_impressions:0, sponsored_impressions:0 };
+  rows.sort((a,b)=> MONTHS.indexOf(a.month) - MONTHS.indexOf(b.month));
+  let new_followers=0, organic_impressions=0, sponsored_impressions=0;
+  rows.forEach(r=>{
+    new_followers += r.new_followers || 0;
+    organic_impressions += r.organic_impressions || 0;
+    sponsored_impressions += r.sponsored_impressions || 0;
+  });
+  const last = rows[rows.length-1];
+  return { new_followers, total_followers: last.total_followers, organic_impressions, sponsored_impressions };
 }
 
 function priorMonth(month){
@@ -460,6 +516,12 @@ let currentMetric = 'spend';
 function populateMonthSelect(){
   const sel = document.getElementById('monthSelect');
   sel.innerHTML = '';
+
+  const allTimeOpt = document.createElement('option');
+  allTimeOpt.value = 'ALL_TIME';
+  allTimeOpt.textContent = 'All Time';
+  sel.appendChild(allTimeOpt);
+
   MONTHS.forEach(m=>{
     const opt = document.createElement('option');
     opt.value = m;
@@ -470,50 +532,50 @@ function populateMonthSelect(){
 }
 
 /* ===================== 1. Summary (clean bulleted list) ===================== */
-function renderSummaryBanner(view, month){
+function renderSummaryBanner(view, sel){
   const el = document.getElementById('summaryBanner');
-  const prev = priorMonth(month);
+  const prevSel = priorMonthsForSelection(sel);
   const brands = view === 'comparison' ? ['SM','TT'] : [view];
   let items = '';
 
   brands.forEach(b=>{
-    const camp = aggregateCampaigns(b, month);
-    const campPrev = prev ? aggregateCampaigns(b, prev) : null;
-    const an = getAnalytics(b, month);
+    const camp = aggregateCampaigns(b, sel);
+    const campPrev = prevSel ? aggregateCampaigns(b, prevSel) : null;
+    const an = getAnalytics(b, sel);
     const name = b === 'SM' ? 'ShowMojo' : 'Tenant Turner';
     const cls = b === 'SM' ? 'sm' : 'tt';
     const nCampaigns = camp.rows.filter(r => r.impressions > 0 || r.spend > 0).length;
 
     const spendDelta = campPrev ? ` (${deltaInline(camp.spend, campPrev.spend, {isCurrency:true})})` : '';
-    const followerDelta = ''; // kept out of headline sentence for readability
 
     items += `<li class="${cls}">
       <b>${name}</b> spent <b>${fmtCurrency(camp.spend)}</b>${spendDelta} across <b>${nCampaigns}</b> campaign${nCampaigns===1?'':'s'}, reaching <b>${fmtInt(camp.impressions)}</b> impressions at a <b>${fmtPct(camp.ctr)}</b> CTR and <b>${fmtInt(camp.conversions)}</b> conversion${camp.conversions===1?'':'s'}. Page followers grew by <b>${fmtInt(an.new_followers)}</b>, now at <b>${fmtInt(an.total_followers)}</b> total.
     </li>`;
   });
 
-  let html = `<div class="summary-month">${monthLabel(month)}</div><ul class="summary-list">${items}</ul>`;
+  let html = `<div class="summary-month">${labelForSelection(sel)}</div><ul class="summary-list">${items}</ul>`;
 
   if(view === 'comparison'){
-    const smC = aggregateCampaigns('SM', month), ttC = aggregateCampaigns('TT', month);
+    const smC = aggregateCampaigns('SM', sel), ttC = aggregateCampaigns('TT', sel);
     const spendLeader = smC.spend >= ttC.spend ? 'ShowMojo' : 'Tenant Turner';
     const ctrLeader = smC.ctr >= ttC.ctr ? 'ShowMojo' : 'Tenant Turner';
-    html += `<div class="compare-line">${spendLeader} spent more this month · ${ctrLeader} had the stronger click-through rate</div>`;
+    const periodWord = sel === 'ALL_TIME' ? 'overall' : 'this month';
+    html += `<div class="compare-line">${spendLeader} spent more ${periodWord} · ${ctrLeader} had the stronger click-through rate</div>`;
   }
 
   el.innerHTML = html;
 }
 
 /* ===================== 2. Overall cards ===================== */
-function brandCardHTML(brand, month){
+function brandCardHTML(brand, sel){
   const isSM = brand === 'SM';
   const logo = isSM ? 'data:image/png;base64,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' : 'data:image/png;base64,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';
   const badge = isSM ? 'ShowMojo Campaigns' : 'Tenant Turner Campaigns';
-  const prev = priorMonth(month);
-  const camp = aggregateCampaigns(brand, month);
-  const campPrev = prev ? aggregateCampaigns(brand, prev) : null;
-  const an = getAnalytics(brand, month);
-  const anPrev = prev ? getAnalytics(brand, prev) : null;
+  const prevSel = priorMonthsForSelection(sel);
+  const camp = aggregateCampaigns(brand, sel);
+  const campPrev = prevSel ? aggregateCampaigns(brand, prevSel) : null;
+  const an = getAnalytics(brand, sel);
+  const anPrev = prevSel ? getAnalytics(brand, prevSel) : null;
 
   return `
   <div class="brand-card ${isSM?'sm':'tt'}">
@@ -536,15 +598,16 @@ function brandCardHTML(brand, month){
   </div>`;
 }
 
-function renderCards(view, month){
+function renderCards(view, sel){
   const grid = document.getElementById('cardGrid');
-  document.getElementById('overallNote').textContent = `${monthLabel(month)}, vs. ${priorMonth(month) ? monthLabel(priorMonth(month)) : 'no prior month on record'}`;
+  const prevSel = priorMonthsForSelection(sel);
+  document.getElementById('overallNote').textContent = `${labelForSelection(sel)}, ${prevSel ? 'vs. ' + labelForSelection(prevSel) : 'no prior period to compare'}`;
   if(view === 'comparison'){
     grid.className = 'card-grid';
-    grid.innerHTML = brandCardHTML('SM', month) + brandCardHTML('TT', month);
+    grid.innerHTML = brandCardHTML('SM', sel) + brandCardHTML('TT', sel);
   } else {
     grid.className = 'card-grid single';
-    grid.innerHTML = brandCardHTML(view, month);
+    grid.innerHTML = brandCardHTML(view, sel);
   }
 }
 
@@ -574,7 +637,7 @@ function makeBarPanel(containerId, canvasId, title, smVal, ttVal, formatter){
   });
 }
 
-function renderCompareBars(view, month){
+function renderCompareBars(view, sel){
   const campWrap = document.getElementById('barGridCampaigns');
   const container = document.getElementById('compareBarsWrap');
   campWrap.innerHTML = '';
@@ -582,7 +645,7 @@ function renderCompareBars(view, month){
   if(view !== 'comparison'){ container.style.display = 'none'; return; }
   container.style.display = '';
 
-  const smC = aggregateCampaigns('SM', month), ttC = aggregateCampaigns('TT', month);
+  const smC = aggregateCampaigns('SM', sel), ttC = aggregateCampaigns('TT', sel);
 
   makeBarPanel('barGridCampaigns','barSpend','Spend', smC.spend, ttC.spend, fmtCurrency);
   makeBarPanel('barGridCampaigns','barImpressions','Impressions', smC.impressions, ttC.impressions, fmtInt);
@@ -614,14 +677,14 @@ function campaignRowHTML(r){
     </tr>`;
 }
 
-function renderCampaignsTable(view, month){
+function renderCampaignsTable(view, sel){
   const tbody = document.getElementById('campaignBody');
-  document.getElementById('campaignNote').textContent = monthLabel(month);
+  document.getElementById('campaignNote').textContent = labelForSelection(sel);
   tbody.innerHTML = '';
   const brands = view === 'comparison' ? ['SM','TT'] : [view];
 
   brands.forEach(brand=>{
-    const camp = aggregateCampaigns(brand, month);
+    const camp = aggregateCampaigns(brand, sel);
     const groupRow = document.createElement('tr');
     groupRow.className = 'brand-group-row ' + (brand==='SM'?'sm':'tt');
     groupRow.innerHTML = `<td colspan="10">${brand==='SM' ? 'ShowMojo Campaigns' : 'Tenant Turner Campaigns'}</td>`;
@@ -629,7 +692,7 @@ function renderCampaignsTable(view, month){
 
     if(camp.rows.length === 0){
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="10" style="color:var(--muted);">No campaign data recorded for this month.</td>`;
+      tr.innerHTML = `<td colspan="10" style="color:var(--muted);">No campaign data recorded for this period.</td>`;
       tbody.appendChild(tr);
       return;
     }
@@ -653,17 +716,17 @@ function renderCampaignsTable(view, month){
   });
 }
 
-/* ===================== 4. Analytics: this month only (numbers + bars) ===================== */
-function renderAnalyticsTable(view, month){
+/* ===================== 4. Analytics: selected period only (numbers + bars) ===================== */
+function renderAnalyticsTable(view, sel){
   const tbody = document.getElementById('analyticsBody');
-  document.getElementById('analyticsNote').textContent = monthLabel(month);
+  document.getElementById('analyticsNote').textContent = labelForSelection(sel);
   tbody.innerHTML = '';
   const brands = view === 'comparison' ? ['SM','TT'] : [view];
-  const prev = priorMonth(month);
+  const prevSel = priorMonthsForSelection(sel);
 
   brands.forEach(brand=>{
-    const an = getAnalytics(brand, month);
-    const anPrev = prev ? getAnalytics(brand, prev) : null;
+    const an = getAnalytics(brand, sel);
+    const anPrev = prevSel ? getAnalytics(brand, prevSel) : null;
     const tr = document.createElement('tr');
     const brandLabel = brand === 'SM'
       ? `<span style="color:var(--sm-blue-dark);font-weight:700;">ShowMojo</span>`
@@ -678,27 +741,27 @@ function renderAnalyticsTable(view, month){
   });
 }
 
-function renderAnalyticsBars(view, month){
+function renderAnalyticsBars(view, sel){
   const wrap = document.getElementById('barGridAnalyticsMonth');
   wrap.innerHTML = '';
 
   if(view === 'comparison'){
-    const smA = getAnalytics('SM', month), ttA = getAnalytics('TT', month);
+    const smA = getAnalytics('SM', sel), ttA = getAnalytics('TT', sel);
     makeBarPanel('barGridAnalyticsMonth','barNewFollowersM','New Followers', smA.new_followers, ttA.new_followers, fmtInt);
     makeBarPanel('barGridAnalyticsMonth','barTotalFollowersM','Total Followers', smA.total_followers, ttA.total_followers, fmtInt);
     makeBarPanel('barGridAnalyticsMonth','barOrganicM','Organic Impr.', smA.organic_impressions, ttA.organic_impressions, fmtInt);
     makeBarPanel('barGridAnalyticsMonth','barSponsoredM','Sponsored Impr.', smA.sponsored_impressions, ttA.sponsored_impressions, fmtInt);
   } else {
-    // Single brand: show this month vs prior month instead of SM vs TT
-    const an = getAnalytics(view, month);
-    const prev = priorMonth(month);
-    const anPrev = prev ? getAnalytics(view, prev) : {new_followers:0,total_followers:0,organic_impressions:0,sponsored_impressions:0};
-    const label = prev ? monthLabel(prev) : 'No prior month';
+    // Single brand: show current period vs prior period instead of SM vs TT
+    const an = getAnalytics(view, sel);
+    const prevSel = priorMonthsForSelection(sel);
+    const anPrev = prevSel ? getAnalytics(view, prevSel) : {new_followers:0,total_followers:0,organic_impressions:0,sponsored_impressions:0};
+    const label = prevSel ? labelForSelection(prevSel) : 'No prior period';
     const brandColor = view === 'SM' ? SM_COLOR : TT_COLOR;
-    makeBarPanelLabeled('barGridAnalyticsMonth','barNewFollowersM','New Followers', label, monthLabel(month), anPrev.new_followers, an.new_followers, fmtInt, brandColor);
-    makeBarPanelLabeled('barGridAnalyticsMonth','barTotalFollowersM','Total Followers', label, monthLabel(month), anPrev.total_followers, an.total_followers, fmtInt, brandColor);
-    makeBarPanelLabeled('barGridAnalyticsMonth','barOrganicM','Organic Impr.', label, monthLabel(month), anPrev.organic_impressions, an.organic_impressions, fmtInt, brandColor);
-    makeBarPanelLabeled('barGridAnalyticsMonth','barSponsoredM','Sponsored Impr.', label, monthLabel(month), anPrev.sponsored_impressions, an.sponsored_impressions, fmtInt, brandColor);
+    makeBarPanelLabeled('barGridAnalyticsMonth','barNewFollowersM','New Followers', label, labelForSelection(sel), anPrev.new_followers, an.new_followers, fmtInt, brandColor);
+    makeBarPanelLabeled('barGridAnalyticsMonth','barTotalFollowersM','Total Followers', label, labelForSelection(sel), anPrev.total_followers, an.total_followers, fmtInt, brandColor);
+    makeBarPanelLabeled('barGridAnalyticsMonth','barOrganicM','Organic Impr.', label, labelForSelection(sel), anPrev.organic_impressions, an.organic_impressions, fmtInt, brandColor);
+    makeBarPanelLabeled('barGridAnalyticsMonth','barSponsoredM','Sponsored Impr.', label, labelForSelection(sel), anPrev.sponsored_impressions, an.sponsored_impressions, fmtInt, brandColor);
   }
 }
 
@@ -783,15 +846,15 @@ function renderVsBanner(view){
 
 function render(){
   const view = document.getElementById('viewSelect').value;
-  const month = document.getElementById('monthSelect').value;
+  const sel = document.getElementById('monthSelect').value;
 
   renderVsBanner(view);
-  renderSummaryBanner(view, month);
-  renderCards(view, month);
-  renderCompareBars(view, month);
-  renderCampaignsTable(view, month);
-  renderAnalyticsTable(view, month);
-  renderAnalyticsBars(view, month);
+  renderSummaryBanner(view, sel);
+  renderCards(view, sel);
+  renderCompareBars(view, sel);
+  renderCampaignsTable(view, sel);
+  renderAnalyticsTable(view, sel);
+  renderAnalyticsBars(view, sel);
   renderTrendLegend(view);
   renderTrendChart(view, currentMetric);
   setActivePill(currentMetric);
