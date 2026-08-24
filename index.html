@@ -147,7 +147,23 @@
   .bar-panel canvas{max-height:140px;}
 
   /* ---------- Tables ---------- */
-  .table-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  .table-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);position:relative;}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  #campaignsTable{min-width:0;}
+  #campaignsTable thead th{padding:10px 9px;font-size:9.5px;}
+  #campaignsTable tbody td{padding:9px 9px;font-size:12px;}
+  .scroll-fade{
+    position:absolute;top:0;right:0;bottom:0;width:26px;
+    background:linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.97));
+    pointer-events:none;opacity:0;transition:opacity .15s ease;border-radius:0 var(--radius) var(--radius) 0;
+  }
+  .scroll-fade.show{opacity:1;}
+  .scroll-hint{
+    display:none;align-items:center;gap:5px;font-size:11px;color:var(--sm-blue-dark);font-weight:700;
+    margin:0 0 8px;
+  }
+  .scroll-hint.show{display:flex;}
+  .scroll-hint svg{flex-shrink:0;}
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   thead th{
     text-align:right;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted-2);
@@ -255,26 +271,34 @@
       <div class="section-title"><span class="num">3</span>Campaigns — Breakdown</div>
       <div class="section-sub" id="campaignNote"></div>
     </div>
+    <div class="scroll-hint" id="campaignScrollHint">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 5l-6 7 6 7M16 5l6 7-6 7"/></svg>
+      Scroll sideways to see all columns
+    </div>
     <div class="table-wrap">
-      <table>
+      <div class="table-scroll" id="campaignScroll">
+      <table id="campaignsTable">
         <thead>
           <tr>
             <th>Campaign &amp; Objective</th>
             <th>Spend</th>
-            <th>Impressions</th>
+            <th>Impr.</th>
             <th>Clicks</th>
             <th>Reach</th>
             <th>CTR</th>
             <th>Eng. Rate</th>
-            <th>Social Actions</th>
+            <th>Soc. Actions</th>
             <th>Video Plays</th>
-            <th>Conversions</th>
+            <th>Conv.</th>
+            <th>Cost/Conv.</th>
           </tr>
         </thead>
         <tbody id="campaignBody"></tbody>
       </table>
+      </div>
+      <div class="scroll-fade" id="campaignFade"></div>
     </div>
-    <div class="footnote">"–" means that campaign had no recorded activity in the selected month. Totals row sums every campaign line for that brand.</div>
+    <div class="footnote">"–" means that campaign had no recorded activity in the selected month, or (for Cost/Conversion) had zero conversions to divide by. Totals row sums every campaign line for that brand; Cost/Conversion in the totals row is total spend ÷ total conversions.</div>
   </div>
 
   <!-- 4. ANALYTICS TABLE -->
@@ -283,7 +307,12 @@
       <div class="section-title"><span class="num">4</span>Page Analytics — This Month</div>
       <div class="section-sub" id="analyticsNote"></div>
     </div>
+    <div class="scroll-hint" id="analyticsScrollHint">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 5l-6 7 6 7M16 5l6 7-6 7"/></svg>
+      Scroll sideways to see all columns
+    </div>
     <div class="table-wrap" style="margin-bottom:16px;">
+      <div class="table-scroll" id="analyticsScroll">
       <table>
         <thead>
           <tr>
@@ -296,6 +325,8 @@
         </thead>
         <tbody id="analyticsBody"></tbody>
       </table>
+      </div>
+      <div class="scroll-fade" id="analyticsFade"></div>
     </div>
     <div class="subsection-label">At a glance</div>
     <div class="bar-grid" id="barGridAnalyticsMonth"></div>
@@ -662,6 +693,7 @@ function shortObjective(campaignName){
 function campaignRowHTML(r){
   const meta = shortObjective(r.campaign);
   const hasData = r.impressions > 0 || r.clicks > 0 || r.spend > 0;
+  const costPerConv = (r.conversions > 0) ? fmtCurrency(r.spend / r.conversions) : '–';
   return `
     <tr>
       <td><span class="campaign-name">${meta.objective || meta.code}</span><span class="campaign-tag">${meta.audience || meta.code}</span></td>
@@ -674,6 +706,7 @@ function campaignRowHTML(r){
       <td>${r.social_actions ? fmtInt(r.social_actions) : '–'}</td>
       <td>${r.video_plays ? fmtInt(r.video_plays) : '–'}</td>
       <td>${r.conversions ? fmtInt(r.conversions) : '–'}</td>
+      <td>${costPerConv}</td>
     </tr>`;
 }
 
@@ -687,18 +720,19 @@ function renderCampaignsTable(view, sel){
     const camp = aggregateCampaigns(brand, sel);
     const groupRow = document.createElement('tr');
     groupRow.className = 'brand-group-row ' + (brand==='SM'?'sm':'tt');
-    groupRow.innerHTML = `<td colspan="10">${brand==='SM' ? 'ShowMojo Campaigns' : 'Tenant Turner Campaigns'}</td>`;
+    groupRow.innerHTML = `<td colspan="11">${brand==='SM' ? 'ShowMojo Campaigns' : 'Tenant Turner Campaigns'}</td>`;
     tbody.appendChild(groupRow);
 
     if(camp.rows.length === 0){
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="10" style="color:var(--muted);">No campaign data recorded for this period.</td>`;
+      tr.innerHTML = `<td colspan="11" style="color:var(--muted);">No campaign data recorded for this period.</td>`;
       tbody.appendChild(tr);
       return;
     }
 
     camp.rows.forEach(r=>{ tbody.insertAdjacentHTML('beforeend', campaignRowHTML(r)); });
 
+    const totalCostPerConv = (camp.conversions > 0) ? fmtCurrency(camp.spend / camp.conversions) : '–';
     const totalRow = document.createElement('tr');
     totalRow.className = 'total-row';
     totalRow.innerHTML = `
@@ -711,7 +745,8 @@ function renderCampaignsTable(view, sel){
       <td>${fmtPct(camp.engagement_rate)}</td>
       <td>${fmtInt(camp.social_actions)}</td>
       <td>${fmtInt(camp.video_plays)}</td>
-      <td>${fmtInt(camp.conversions)}</td>`;
+      <td>${fmtInt(camp.conversions)}</td>
+      <td>${totalCostPerConv}</td>`;
     tbody.appendChild(totalRow);
   });
 }
@@ -858,6 +893,27 @@ function render(){
   renderTrendLegend(view);
   renderTrendChart(view, currentMetric);
   setActivePill(currentMetric);
+  updateAllScrollHints();
+}
+
+/* ===================== Scroll hint / fade for wide tables ===================== */
+function updateScrollHint(scrollId, hintId, fadeId){
+  const scrollEl = document.getElementById(scrollId);
+  const hintEl = document.getElementById(hintId);
+  const fadeEl = document.getElementById(fadeId);
+  if(!scrollEl || !hintEl || !fadeEl) return;
+  const needsScroll = scrollEl.scrollWidth > scrollEl.clientWidth + 2;
+  hintEl.classList.toggle('show', needsScroll);
+  fadeEl.classList.toggle('show', needsScroll);
+  // Hide fade once scrolled near the end, since there's nothing more to hint at
+  scrollEl.onscroll = () => {
+    const atEnd = scrollEl.scrollLeft + scrollEl.clientWidth >= scrollEl.scrollWidth - 2;
+    fadeEl.classList.toggle('show', needsScroll && !atEnd);
+  };
+}
+function updateAllScrollHints(){
+  updateScrollHint('campaignScroll','campaignScrollHint','campaignFade');
+  updateScrollHint('analyticsScroll','analyticsScrollHint','analyticsFade');
 }
 
 /* ===================== Init ===================== */
@@ -872,6 +928,7 @@ document.querySelectorAll('.pill').forEach(p=>{
   });
 });
 render();
+window.addEventListener('resize', updateAllScrollHints);
 
 </script>
 </body>
